@@ -1,0 +1,33 @@
+# PENTING: vercel CLI TIDAK otomatis memakai .gitignore saat deploy manual
+# (vercel deploy) — harus dinyatakan eksplisit di sini juga.
+
+# secret & env — sudah diset lewat `vercel env`, jangan sampai file mentahnya ikut ter-upload
+.env
+.env.*
+!.env.example
+
+# dependensi & build artifact (Vercel install & build ulang sendiri)
+/node_modules
+/.next/
+/out/
+/build
+
+# database SQLite lama & dump data karyawan asli (data pribadi sungguhan)
+/prisma/dev.db
+/prisma/backup/
+
+# file upload surat dokter lokal (sudah dipindah ke Vercel Blob)
+/uploads/
+
+# git & config lokal
+.git
+.vercel
+
+# cookie jar sisa pengujian curl
+*.txt
+!README*.txt
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
