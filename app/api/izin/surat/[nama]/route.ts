@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
-import { readFile } from "fs/promises";
 import path from "path";
 import { prisma } from "@/lib/prisma";
 import { sesiSaatIni, adalahAdmin } from "@/lib/auth";
-import { DIR_SURAT_DOKTER, MIME_SURAT } from "@/lib/surat-dokter";
+import { MIME_SURAT, bacaSurat } from "@/lib/surat-dokter";
 
 // Surat dokter berisi dokumen medis: hanya pemilik izin dan admin yang boleh melihat
 export async function GET(
@@ -26,10 +25,8 @@ export async function GET(
     return NextResponse.json({ error: "Akses ditolak" }, { status: 403 });
   }
 
-  let data: Buffer;
-  try {
-    data = await readFile(path.join(DIR_SURAT_DOKTER, namaBersih));
-  } catch {
+  const data = await bacaSurat(namaBersih);
+  if (!data) {
     return NextResponse.json(
       { error: "File surat tidak ditemukan di server" },
       { status: 404 }

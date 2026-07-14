@@ -1,14 +1,8 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import { prisma } from "@/lib/prisma";
 import { sesiSaatIni } from "@/lib/auth";
-import {
-  DIR_SURAT_DOKTER,
-  MAKS_UKURAN_SURAT,
-  TIPE_SURAT,
-} from "@/lib/surat-dokter";
+import { MAKS_UKURAN_SURAT, TIPE_SURAT, simpanSurat } from "@/lib/surat-dokter";
 import { MAKS_HARI_MENIKAH, LABEL_JENIS_IZIN, type JenisIzin } from "@/lib/izin";
 import { kirimNotifKeAdmin } from "@/lib/push";
 
@@ -95,10 +89,10 @@ export async function POST(req: Request) {
       );
     }
     namaFile = `${randomUUID()}.${ekstensi}`;
-    await mkdir(DIR_SURAT_DOKTER, { recursive: true });
-    await writeFile(
-      path.join(DIR_SURAT_DOKTER, namaFile),
-      Buffer.from(await fileSurat.arrayBuffer())
+    await simpanSurat(
+      namaFile,
+      Buffer.from(await fileSurat.arrayBuffer()),
+      fileSurat.type
     );
   }
 
