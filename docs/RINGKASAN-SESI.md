@@ -63,10 +63,12 @@ User memilih opsi **"coba dua-duanya dulu"**: deploy trial paralel ke **Vercel**
 - ✅ Akun Neon dibuat, `DATABASE_URL` sudah di `.env`
 - ✅ Migrasi SQLite → PostgreSQL selesai: schema diubah, migrasi lama diarsipkan ke `prisma/backup/migrations-sqlite-lama/`, seluruh data (54 user, 5 profil, 4 kontrak, 4 izin) dipulihkan dan diverifikasi utuh di Neon
 - ✅ Bug ditemukan & diperbaiki saat migrasi: `lib/cari-user.ts` pakai raw SQL tanpa kutip identifier (`FROM User`) — jalan di SQLite, error di Postgres. Diganti pakai `mode: "insensitive"` native Prisma (lebih rapi, sudah didukung Postgres)
-- ✅ `.gitignore` diperbarui: `prisma/dev.db` dan `prisma/backup/` (berisi dump data karyawan asli) tidak boleh ikut ke git
-- ⬜ **Belum dikerjakan:** repo GitHub (privat), abstraksi penyimpanan surat dokter (disk lokal / Vercel Blob tergantung platform), deploy ke Vercel, deploy ke Railway
+- ✅ `.gitignore` diperbarui: `prisma/dev.db`, `prisma/backup/` (dump data karyawan asli), dan `*.txt` (cookie jar sisa uji curl) tidak boleh ikut ke git
+- ✅ `gh` CLI terpasang & login sebagai akun **ones31**
+- ✅ Repo GitHub **privat** dibuat & kode ter-push: **https://github.com/ones31/portal-karyawan** (branch `main`). Sudah diverifikasi: repo privat, tidak ada `.env`/`dev.db`/`uploads`/secret yang ikut ter-commit.
+- ⬜ **Belum dikerjakan:** abstraksi penyimpanan surat dokter (disk lokal / Vercel Blob tergantung platform), deploy ke Vercel, deploy ke Railway, setup env vars di kedua platform
 
-**Sesi berikutnya lanjut dari sini** — langkah selanjutnya: buat repo GitHub privat, push kode, lalu deploy ke kedua platform. Shared hosting sudah dicoret sejak awal (tidak cocok untuk Next.js).
+**Sesi berikutnya lanjut dari sini** — langkah selanjutnya: buat akun Vercel & Railway (kalau belum), hubungkan ke repo `ones31/portal-karyawan`, set environment variables (`DATABASE_URL`, `JWT_SECRET` baru yang kuat, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`), lalu deploy ke kedua platform untuk trial. Shared hosting sudah dicoret sejak awal (tidak cocok untuk Next.js).
 
 ## Hal yang perlu diingat sebelum go-live (belum dikerjakan)
 
