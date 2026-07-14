@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  KARYAWAN
+}
+
+enum JenisIzin {
+  SAKIT
+  LAINNYA
+  TUGAS_NEGARA
+  MENIKAH
+}
+
+enum StatusIzin {
+  MENUNGGU
+  DISETUJUI
+  DITOLAK
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String?  @unique
+  password  String
+  nama      String   @unique
+  phone     String?
+  lokasi    String?  // "Tegal Alur" | "Menceng"
+  tanggalMasuk DateTime? // waktu mulai bekerja di toko
+  role      Role     @default(KARYAWAN)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  profil     ProfilKaryawan?
+  kontrak    Kontrak?
+  izin       Izin[]
+  tukarLibur TukarLibur[]
+  pushSub    PushSubscription[]
+}
+
+// Langganan push notification per perangkat/browser
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+}
+
+model ProfilKaryawan {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nik            String?
+  tempatLahir    String?
+  tanggalLahir   DateTime?
+  jenisKelamin   String?
+  agama          String?
+  alamat         String?
+  telepon        String?
+  namaAyahIbu    String?
+  merokok        String?   // "Merokok" | "Tidak Merokok"
+  statusNikah    String?
+  kontakDarurat  String?
+  npwp           String?
+  bpjs           String?
+  rekeningBank   String?
+  pendidikan     String?
+  tandaTangan    String?   // tanda tangan persetujuan peraturan & perjanjian saat onboarding (data URL)
+  tandaTanganPada DateTime?
+  updatedAt      DateTime  @updatedAt
+}
+
+model Kontrak {
+  id                String    @id @default(cuid())
+  userId            String    @unique
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mulaiKontrak      DateTime
+  akhirKontrak      DateTime
+  isiKontrak        String
+  tandaTangan       String?   // data URL gambar tanda tangan
+  setujuTataTertib  Boolean   @default(false)
+  ditandatanganiPada DateTime?
+}
+
+model Izin {
+  id           String     @id @default(cuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jenis        JenisIzin
+  tanggalMulai DateTime
+  tanggalAkhir DateTime
+  alasan       String
+  suratDokter  String?    // nama file surat dokter di folder uploads/surat-dokter
+  status       StatusIzin @default(MENUNGGU)
+  createdAt    DateTime   @default(now())
+}
+
+model TukarLibur {
+  id               String     @id @default(cuid())
+  userId           String
+  user             User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tanggalLibur     DateTime   // tanggal libur yang ditukar
+  tukarDengan      String     // nama rekan yang diajak tukar libur
+  tanggalPengganti DateTime?  // tanggal libur pengganti (opsional)
+  keterangan       String?
+  status           StatusIzin @default(MENUNGGU)
+  createdAt        DateTime   @default(now())
+}

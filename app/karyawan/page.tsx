@@ -1,0 +1,204 @@
+import Link from "next/link";
+import { prisma } from "@/lib/prisma";
+import { sesiSaatIni } from "@/lib/auth";
+import { statusMasaKerja } from "@/lib/masa-kerja";
+import { JENIS_IZIN, LABEL_JENIS_IZIN } from "@/lib/izin";
+import { periodeBerjalan } from "@/lib/periode";
+
+function formatTanggal(d: Date) {
+  return d.toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+export default async function BerandaKaryawan() {
+  const sesi = (await sesiSaatIni())!;
+  // Periode berjalan ala penggajian: tanggal 26 s/d 25 bulan berikutnya
+  const periode = periodeBerjalan();
+  const [profil, kontrak, rekapJenisIzin, izinPeriode, user] =
+    await Promise.all([
+      prisma.profilKaryawan.findUnique({ where: { userId: sesi.userId } }),
+      prisma.kontrak.findUnique({ where: { userId: sesi.userId } }),
+      prisma.izin.groupBy({
+        by: ["jenis"],
+        where: {
+          userId: sesi.userId,
+          tanggalMulai: { gte: periode.gte, lt: periode.lt },
+        },
+        _count: true,
+      }),
+      // Untuk hitung kehadiran: izin yang beririsan dengan periode & tidak ditolak
+      prisma.izin.findMany({
+        where: {
+          userId: sesi.userId,
+          status: { not: "DITOLAK" },
+          tanggalMulai: { lt: periode.lt },
+          tanggalAkhir: { gte: periode.gte },
+        },
+        select: { tanggalMulai: true, tanggalAkhir: true },
+      }),
+      prisma.user.findUnique({
+        where: { id: sesi.userId },
+        select: { tanggalMasuk: true },
+      }),
+    ]);
+
+  const tetap = statusMasaKerja(user?.tanggalMasuk) === "TETAP";
+  const jumlahPerJenis = Object.fromEntries(
+    JENIS_IZIN.map((j) => [
+      j,
+      rekapJenisIzin.find((r) => r.jenis === j)?._count ?? 0,
+    ])
+  );
+  const jumlahIzin = Object.values(jumlahPerJenis).reduce((a, b) => a + b, 0);
+
+  // Tingkat kehadiran periode berjalan: 100% dikurangi hari izin (dipotong ke periode)
+  const hariIzin = izinPeriode.reduce((total, i) => {
+    const mulai = Math.max(i.tanggalMulai.getTime(), periode.gte.getTime());
+    const akhir = Math.min(
+      i.tanggalAkhir.getTime() + 86400000, // tanggal akhir inklusif
+      periode.lt.getTime()
+    );
+    return total + Math.max(0, Math.round((akhir - mulai) / 86400000));
+  }, 0);
+  const kehadiran = Math.max(
+    0,
+    Math.round(100 - (hariIzin / periode.totalHari) * 100)
+  );
+
+  // Kontrak baru (dibuat/diperpanjang admin) menunggu tanda tangan karyawan
+  const kontrakMenungguTtd = !tetap && !!kontrak && !kontrak.ditandatanganiPada;
+
+  const langkah = [
+    {
+      href: "/karyawan/data-pribadi",
+      judul: "1. Lengkapi Data Pribadi",
+      selesai: !!profil?.nik,
+      keterangan: profil?.nik
+        ? "Data pribadi sudah diisi."
+        : "Isi data pribadi Anda sebagai karyawan baru.",
+    },
+    {
+      href: "/karyawan/kontrak",
+      judul: "2. Tanda Tangani Kontrak Kerja",
+      selesai: tetap || !!kontrak?.ditandatanganiPada || !!profil?.tandaTangan,
+      keterangan: tetap
+        ? "Karyawan tetap (masa kerja > 3 tahun) — tidak terikat masa kontrak."
+        : kontrak?.ditandatanganiPada
+          ? `Ditandatangani pada ${formatTanggal(kontrak.ditandatanganiPada)}.`
+          : profil?.tandaTanganPada
+            ? `Persetujuan ditandatangani saat pendaftaran (${formatTanggal(profil.tandaTanganPada)}).${kontrak ? "" : " Masa kontrak akan ditetapkan admin."}`
+            : kontrak
+              ? "Baca kontrak dan tata tertib, lalu tanda tangani."
+              : "Kontrak belum dibuat oleh admin.",
+    },
+    {
+      href: "/karyawan/izin",
+      judul: "Pengajuan Izin",
+      selesai: null,
+      keterangan: `${jumlahIzin} pengajuan izin periode ${periode.label}.`,
+    },
+  ];
+
+  const warnaKehadiran =
+    kehadiran >= 90
+      ? "text-green-600"
+      : kehadiran >= 75
+        ? "text-amber-600"
+        : "text-red-600";
+
+  return (
+    <div className="space-y-4">
+      {kontrakMenungguTtd && (
+        <Link
+          href="/karyawan/kontrak"
+          className="flex items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800 shadow-sm hover:bg-blue-100"
+        >
+          <span aria-hidden>🔔</span>
+          <p>
+            <strong>Notifikasi:</strong> Anda punya kontrak kerja baru yang
+            menunggu tanda tangan
+            {kontrak &&
+              ` (berlaku ${formatTanggal(kontrak.mulaiKontrak)} — ${formatTanggal(kontrak.akhirKontrak)})`}
+            . Klik di sini untuk membaca dan menandatangani.
+          </p>
+        </Link>
+      )}
+      <div className="rounded-xl bg-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-bold">Selamat datang, {sesi.nama}</h1>
+            {tetap ? (
+              <p className="mt-1 text-sm font-medium text-green-700">
+                Karyawan Tetap (masa kerja &gt; 3 tahun)
+              </p>
+            ) : (
+              kontrak && (
+                <p className="mt-1 text-sm text-slate-500">
+                  Masa kontrak: {formatTanggal(kontrak.mulaiKontrak)} —{" "}
+                  {formatTanggal(kontrak.akhirKontrak)}
+                </p>
+              )
+            )}
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-center">
+              <p className={`text-3xl font-bold ${warnaKehadiran}`}>
+                {kehadiran}%
+              </p>
+              <p className="text-xs text-slate-500">
+                Tingkat Kehadiran
+                <br />({periode.label})
+              </p>
+            </div>
+            <a
+              href="https://chat.whatsapp.com/DTCkLLvSdsnDLGU8lQVfl4"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"
+            >
+              💬 WA Grup Toko Marmo
+            </a>
+          </div>
+        </div>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        {langkah.map((l) => (
+          <Link
+            key={l.href}
+            href={l.href}
+            className="rounded-xl bg-white p-5 shadow-sm transition hover:shadow-md"
+          >
+            <div className="flex items-start justify-between">
+              <h2 className="font-semibold">{l.judul}</h2>
+              {l.selesai !== null && (
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                    l.selesai
+                      ? "bg-green-100 text-green-700"
+                      : "bg-amber-100 text-amber-700"
+                  }`}
+                >
+                  {l.selesai ? "Selesai" : "Belum"}
+                </span>
+              )}
+            </div>
+            <p className="mt-2 text-sm text-slate-500">{l.keterangan}</p>
+            {l.href === "/karyawan/izin" && (
+              <ul className="mt-3 space-y-1 border-t border-slate-100 pt-3 text-sm">
+                {JENIS_IZIN.map((j) => (
+                  <li key={j} className="flex items-center justify-between">
+                    <span className="text-slate-500">{LABEL_JENIS_IZIN[j]}</span>
+                    <span className="font-medium">{jumlahPerJenis[j]}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
