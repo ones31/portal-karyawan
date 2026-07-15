@@ -16,6 +16,12 @@ Kedua item yang tadinya menggantung sudah dikerjakan user lewat sesi Claude Cowo
 
 Bonus di commit yang sama: **Feature 17** — ranking persentase kehadiran per lokasi di dashboard admin/owner.
 
+## ✅ Integrasi OpenClaw — rangkuman aktivitas ke Telegram (15 Jul 2026)
+
+User punya OpenClaw (personal AI agent, self-hosted di Mac ini) yang terhubung ke Telegram. Dibuat **Feature 18**: endpoint `GET /api/admin/ringkasan-agent` (token statis `AGENT_REPORT_TOKEN` di `.env` lokal + Vercel env production/preview — BUKAN sesi login) + cron job OpenClaw `portal-karyawan-ringkasan` (08:00 WIB harian, model eksplisit `sonnet` — ID job `f98a9505-952d-4a32-8437-0574592fadb9`) yang memanggil endpoint ini dan mengirim rangkuman ke Telegram pribadi user. Sudah diuji manual (`openclaw cron run ... --wait`) dan **terkonfirmasi terkirim** ke Telegram.
+
+**Catatan penting ditemukan saat kerjakan ini:** 4 cron job pribadi user yang sudah ada sebelumnya (morning-briefing, nightly-summary, Memory Dreaming, daily-self-learning) semuanya berstatus "skipped" terus-menerus karena model default agent `main` (`9router/tes1`) tidak reachable di endpoint lokalnya. Ini di luar scope Portal Karyawan (bukan kode/proyek ini), tapi berarti notifikasi pribadi user dari OpenClaw kemungkinan besar sudah lama tidak terkirim. Job baru `portal-karyawan-ringkasan` sengaja diberi `--model sonnet` eksplisit supaya tidak ikut kena masalah yang sama.
+
 ## Alat & kredensial yang sudah tersedia di Mac ini
 
 Tidak perlu setup ulang — semua sudah terpasang & login di komputer ini (`/Users/seno`):
