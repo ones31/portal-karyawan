@@ -6,6 +6,22 @@
 
 **Aplikasi sudah LIVE di produksi:** https://portal-karyawan-theta.vercel.app (Vercel, deploy 15 Jul 2026). Database **PostgreSQL (Neon)**, file surat dokter di **Vercel Blob** (mode private), semua env var (`DATABASE_URL`, `JWT_SECRET`, kunci VAPID, `BLOB_READ_WRITE_TOKEN`) terpasang di Vercel. Rencana trial ganda Vercel+Railway **dibatalkan** — user memutuskan cukup Vercel saja. Dev lokal (`npm run dev`, http://localhost:3000) tetap jalan dengan database Neon yang sama.
 
+## ⏭️ Pekerjaan berikutnya (belum diputuskan user)
+
+Di akhir sesi sebelumnya, Claude menawarkan 2 perbaikan keamanan pasca-live yang **belum dijawab user** (user memilih pindah sesi dulu). Tanyakan di awal sesi baru:
+1. **Ganti password lemah** — password karyawan (`123`) dan admin (`admin123` dll.) kini berisiko karena aplikasi sudah bisa diakses publik dari internet.
+2. **Tutup/batasi pendaftaran mandiri** (`/daftar`) — saat ini siapa pun yang tahu URL bisa mendaftar jadi akun karyawan tanpa persetujuan admin.
+
+Keduanya tidak darurat/blocking, tapi sebaiknya tidak dibiarkan lama. Tawarkan opsi konkret (paksa ganti password saat login pertama, kode undangan pendaftaran, dll.) daripada langsung eksekusi — ini keputusan produk, bukan keputusan teknis semata.
+
+## Alat & kredensial yang sudah tersedia di Mac ini
+
+Tidak perlu setup ulang — semua sudah terpasang & login di komputer ini (`/Users/seno`):
+- **`gh` CLI** — sudah login sebagai akun GitHub `ones31` (dipasang via Homebrew)
+- **`vercel` CLI** — sudah terhubung ke proyek `marmotoko/portal-karyawan`; token tersimpan di `~/.vercel-token` (pakai `export VERCEL_TOKEN=$(cat ~/.vercel-token | tr -d '\n')` sebelum menjalankan perintah `vercel ... --token "$VERCEL_TOKEN"`)
+- **Neon** — database Postgres sudah jalan, connection string ada di `.env` project (`DATABASE_URL`)
+- Kalau sesi baru ini berjalan di lingkungan/Mac yang **berbeda** dari yang dipakai sebelumnya, kredensial di atas TIDAK ikut pindah — perlu setup ulang (`gh auth login`, `vercel login`, dst).
+
 ## Apa aplikasinya
 
 Portal HR internal Toko H. Marmo (Next.js 16 + Prisma 6 + PostgreSQL/Neon). Karyawan: onboarding mandiri (baca peraturan+kontrak, tanda tangan digital), isi data pribadi, ajukan izin (sakit/lain-lain/tugas negara/menikah/tukar libur), lihat kontrak, lihat tingkat kehadiran periode berjalan (26–25). Admin/Owner: dashboard, kelola karyawan per lokasi (Tegal Alur / Menceng), approve izin & tukar libur, perpanjang kontrak, hapus karyawan resign. PWA dengan push notification (Web Push/VAPID) untuk notifikasi pengajuan & approval.
