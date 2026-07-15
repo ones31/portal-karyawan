@@ -163,6 +163,18 @@ Dokumen ini adalah **sumber konteks utama** untuk project ini. Saat membantu cod
 **Deskripsi:** Tukar libur menyatu di halaman **Ajukan Izin** karyawan sebagai opsi dropdown "Jenis Pengajuan" (Izin Sakit / Izin Lain-lain / **Tukar Libur**). Saat Tukar Libur dipilih, form menampilkan field: **tanggal libur yang ditukar**, **ditukar dengan siapa** (nama rekan), tanggal libur pengganti (opsional), keterangan (opsional). Riwayat menggabungkan izin + tukar libur berstatus (Menunggu/Disetujui/Ditolak). Di **dashboard admin/owner** ada **kartu "Tukar Libur Menunggu"** yang mengarah ke halaman approval (setujui/tolak). Model `TukarLibur`.
 **User yang memakai:** Karyawan (ajukan), Admin/Owner (approve)
 
+#### Feature 15 — Ganti Password Mandiri ✅
+**Deskripsi:** Menu **"Ganti Password"** tersedia di navbar untuk semua role (karyawan, admin, owner), mengarah ke `/karyawan/ganti-password` atau `/admin/ganti-password` (komponen bersama `components/GantiPasswordForm.tsx`). Form meminta password lama + password baru + konfirmasi; password lama diverifikasi via `bcrypt.compare` sebelum password baru (min. 6 karakter) disimpan ter-hash. Endpoint: `PATCH /api/auth/ganti-password`.
+**User yang memakai:** Semua role
+
+#### Feature 16 — Persetujuan Admin untuk Pendaftaran Mandiri ✅
+**Deskripsi:** User baru mendapat field `statusAkun` (`MENUNGGU` / `AKTIF` / `DITOLAK`, default `AKTIF`). Pendaftaran mandiri (`/daftar`) kini membuat akun dengan status **MENUNGGU**: karyawan tetap langsung bisa login & mengerjakan onboarding seperti biasa (baca peraturan, isi data, TTD kontrak), tapi **belum tampil di Daftar Karyawan utama** sampai admin menyetujui. Admin melihat & memproses pendaftaran menunggu di halaman baru **`/admin/pendaftaran`** (kartu dashboard "Pendaftaran Menunggu"), tombol Setujui (→ `AKTIF`, langsung tampil di Daftar Karyawan) atau Tolak (→ `DITOLAK`, **login diblokir** sejak saat itu — dicek di `app/api/auth/login/route.ts`). Karyawan dapat notifikasi push saat pendaftarannya disetujui/ditolak. Akun yang dibuat admin langsung (`POST /api/admin/karyawan`) tetap otomatis `AKTIF`.
+**User yang memakai:** Karyawan baru (daftar), Admin/Owner (approve/tolak)
+
+#### Feature 17 — Ranking Persentase Kehadiran per Lokasi di Dashboard ✅
+**Deskripsi:** Dashboard admin/owner menampilkan dua tabel **"Tingkat Kehadiran"** terpisah per lokasi (Tegal Alur & Menceng), berisi semua karyawan aktif dengan lokasi terisi, diurutkan **dari persentase kehadiran terendah ke tertinggi**. Memakai formula & periode yang sama dengan Feature 14 (periode berjalan 26–25, izin DITOLAK tidak mengurangi), dipusatkan di `lib/kehadiran.ts` (`hitungPersenKehadiran`, `warnaKehadiran`) supaya beranda karyawan & dashboard admin memakai satu sumber logika yang sama. Query di `app/api/admin/dashboard/route.ts` menghindari N+1 dengan satu `findMany` izin dikelompokkan per user di JS.
+**User yang memakai:** Admin, Owner
+
 ---
 
 ### 3.2 Nice-to-Have Features
@@ -188,6 +200,7 @@ Dokumen ini adalah **sumber konteks utama** untuk project ini. Saat membantu cod
 | name | dipakai untuk login (unik) |
 | password | di-hash (bcrypt) |
 | role | dropdown: `admin` dan `karyawan` (pilihan `admin` hanya muncul untuk owner) |
+| statusAkun | `MENUNGGU` / `AKTIF` / `DITOLAK`, default `AKTIF`. Pendaftaran mandiri mulai `MENUNGGU` sampai admin approve (Feature 16); `DITOLAK` memblokir login |
 | lokasi | dropdown: `Tegal Alur` dan `Menceng` (wajib untuk karyawan) |
 | tanggal_masuk | waktu mulai bekerja di toko (dari spreadsheet "Waktu Masuk") |
 | phone | opsional |
@@ -254,7 +267,7 @@ Dokumen ini adalah **sumber konteks utama** untuk project ini. Saat membantu cod
 | **2 — Core Workflow** | Membuat alur kerja utama berjalan end-to-end | Onboarding → TTD kontrak → pengajuan izin (+upload surat dokter) → approval; edit karyawan | Workflow utama berjalan dari awal sampai akhir; admin bisa update status | ✅ Selesai |
 | **3 — Dashboard & Reporting** | Memberikan insight untuk owner/admin | Summary data, kartu dashboard klik-ke-rincian, filter periode, grafik sederhana, export data | Owner bisa lihat performa & rekap izin/kontrak | 🔶 Sebagian (tersisa: grafik & export) |
 | **4 — Automation & Integration** | Mengurangi pekerjaan manual | WhatsApp/email notification (kontrak habis, izin baru), auto-generate report, aplikasi Android | Sistem bisa kirim update otomatis | ⬜ Belum |
-| **5 — Optimization** | Merapikan sistem untuk jangka panjang | Performance, security, UI/UX, bug fixing, backup, dokumentasi, set `JWT_SECRET` | Sistem stabil; UX rapi; siap scaling | 🔶 Sebagian (DB Postgres ✅, JWT_SECRET ✅, deploy Vercel ✅; backup rutin & password karyawan kuat masih belum) |
+| **5 — Optimization** | Merapikan sistem untuk jangka panjang | Performance, security, UI/UX, bug fixing, backup, dokumentasi, set `JWT_SECRET` | Sistem stabil; UX rapi; siap scaling | 🔶 Sebagian (DB Postgres ✅, JWT_SECRET ✅, deploy Vercel ✅, ganti password mandiri ✅, approval pendaftaran ✅; backup rutin & password default karyawan impor (`123`) yang belum diganti masih belum) |
 
 ---
 

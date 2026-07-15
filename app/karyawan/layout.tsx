@@ -20,6 +20,7 @@ export default async function KaryawanLayout({
           { href: "/karyawan/data-pribadi", label: "Data Pribadi" },
           { href: "/karyawan/kontrak", label: "Kontrak Kerja" },
           { href: "/karyawan/izin", label: "Izin" },
+          { href: "/karyawan/ganti-password", label: "Ganti Password" },
         ]}
       />
       <main className="mx-auto w-full max-w-5xl flex-1 p-4">{children}</main>

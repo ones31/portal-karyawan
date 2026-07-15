@@ -4,6 +4,7 @@ import { sesiSaatIni } from "@/lib/auth";
 import { statusMasaKerja } from "@/lib/masa-kerja";
 import { JENIS_IZIN, LABEL_JENIS_IZIN } from "@/lib/izin";
 import { periodeBerjalan } from "@/lib/periode";
+import { hitungPersenKehadiran, warnaKehadiran } from "@/lib/kehadiran";
 
 function formatTanggal(d: Date) {
   return d.toLocaleDateString("id-ID", {
@@ -54,19 +55,8 @@ export default async function BerandaKaryawan() {
   );
   const jumlahIzin = Object.values(jumlahPerJenis).reduce((a, b) => a + b, 0);
 
-  // Tingkat kehadiran periode berjalan: 100% dikurangi hari izin (dipotong ke periode)
-  const hariIzin = izinPeriode.reduce((total, i) => {
-    const mulai = Math.max(i.tanggalMulai.getTime(), periode.gte.getTime());
-    const akhir = Math.min(
-      i.tanggalAkhir.getTime() + 86400000, // tanggal akhir inklusif
-      periode.lt.getTime()
-    );
-    return total + Math.max(0, Math.round((akhir - mulai) / 86400000));
-  }, 0);
-  const kehadiran = Math.max(
-    0,
-    Math.round(100 - (hariIzin / periode.totalHari) * 100)
-  );
+  // Tingkat kehadiran periode berjalan (formula bersama di lib/kehadiran.ts)
+  const kehadiran = hitungPersenKehadiran(izinPeriode, periode);
 
   // Kontrak baru (dibuat/diperpanjang admin) menunggu tanda tangan karyawan
   const kontrakMenungguTtd = !tetap && !!kontrak && !kontrak.ditandatanganiPada;
@@ -101,13 +91,6 @@ export default async function BerandaKaryawan() {
       keterangan: `${jumlahIzin} pengajuan izin periode ${periode.label}.`,
     },
   ];
-
-  const warnaKehadiran =
-    kehadiran >= 90
-      ? "text-green-600"
-      : kehadiran >= 75
-        ? "text-amber-600"
-        : "text-red-600";
 
   return (
     <div className="space-y-4">
@@ -145,7 +128,7 @@ export default async function BerandaKaryawan() {
           </div>
           <div className="flex items-center gap-4">
             <div className="text-center">
-              <p className={`text-3xl font-bold ${warnaKehadiran}`}>
+              <p className={`text-3xl font-bold ${warnaKehadiran(kehadiran)}`}>
                 {kehadiran}%
               </p>
               <p className="text-xs text-slate-500">

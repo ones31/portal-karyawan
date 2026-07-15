@@ -17,7 +17,9 @@ export async function GET(req: Request) {
   const tanggalMulai = rentangPeriode(periode);
 
   const karyawan = await prisma.user.findMany({
-    where: { role: "KARYAWAN" },
+    // Akun yang masih MENUNGGU persetujuan admin belum tampil di sini
+    // (lihat /admin/pendaftaran); akun DITOLAK juga disembunyikan.
+    where: { role: "KARYAWAN", statusAkun: "AKTIF" },
     orderBy: { nama: "asc" },
     select: {
       id: true,

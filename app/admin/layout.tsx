@@ -18,6 +18,7 @@ export default async function AdminLayout({
         links={[
           { href: "/admin", label: "Dashboard" },
           { href: "/admin/karyawan", label: "Daftar Karyawan" },
+          { href: "/admin/ganti-password", label: "Ganti Password" },
         ]}
       />
       <main className="mx-auto w-full max-w-5xl flex-1 p-4">{children}</main>

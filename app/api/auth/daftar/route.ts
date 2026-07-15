@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { buatToken } from "@/lib/auth";
 import { cariUserByNama } from "@/lib/cari-user";
+import { kirimNotifKeAdmin } from "@/lib/push";
 
 // Pendaftaran mandiri karyawan baru, mengikuti Formulir Karyawan Baru Toko H. Marmo.
 // Role selalu KARYAWAN; lokasi kerja & kontrak ditentukan admin kemudian.
@@ -72,6 +73,10 @@ export async function POST(req: Request) {
       password: await bcrypt.hash(password, 10),
       phone: telepon,
       role: "KARYAWAN",
+      // Pendaftaran mandiri menunggu persetujuan admin: belum tampil di
+      // Daftar Karyawan utama sampai disetujui. Karyawan tetap bisa login
+      // & onboarding sementara menunggu (lihat lib/auth.ts, app/api/auth/login).
+      statusAkun: "MENUNGGU",
       profil: {
         create: {
           tempatLahir,
@@ -86,6 +91,13 @@ export async function POST(req: Request) {
       },
     },
   });
+
+  // Beri tahu admin & owner ada pendaftaran baru yang perlu disetujui
+  await kirimNotifKeAdmin({
+    judul: "Pendaftaran karyawan baru 📝",
+    isi: `${user.nama} baru saja mendaftar dan menunggu persetujuan.`,
+    url: "/admin/pendaftaran",
+  }).catch(() => {});
 
   // Langsung login setelah daftar
   const token = await buatToken({

@@ -22,6 +22,16 @@ export async function POST(req: Request) {
     );
   }
 
+  if (user.statusAkun === "DITOLAK") {
+    return NextResponse.json(
+      {
+        error:
+          "Pendaftaran Anda ditolak oleh admin. Hubungi admin/owner toko untuk info lebih lanjut.",
+      },
+      { status: 403 }
+    );
+  }
+
   const token = await buatToken({
     userId: user.id,
     nama: user.nama,

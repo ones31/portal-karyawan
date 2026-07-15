@@ -26,6 +26,16 @@ enum StatusIzin {
   DITOLAK
 }
 
+// Status persetujuan akun. Akun buatan admin langsung AKTIF.
+// Akun daftar mandiri (/daftar) mulai MENUNGGU sampai admin menyetujui;
+// karyawan tetap bisa login & onboarding saat MENUNGGU (belum tampil di Daftar Karyawan utama).
+// DITOLAK memblokir login.
+enum StatusAkun {
+  MENUNGGU
+  AKTIF
+  DITOLAK
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String?  @unique
@@ -35,6 +45,7 @@ model User {
   lokasi    String?  // "Tegal Alur" | "Menceng"
   tanggalMasuk DateTime? // waktu mulai bekerja di toko
   role      Role     @default(KARYAWAN)
+  statusAkun StatusAkun @default(AKTIF)
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 

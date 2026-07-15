@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BATAS_HARI_KONTRAK_HABIS } from "@/lib/kontrak";
 import { LABEL_JENIS_IZIN } from "@/lib/izin";
+import { warnaKehadiran } from "@/lib/kehadiran";
 
 type Statistik = {
   totalKaryawan: number;
@@ -12,6 +13,14 @@ type Statistik = {
   izinMenunggu: number;
   tukarLiburMenunggu: number;
   kontrakSegeraHabis: number;
+  pendaftaranMenunggu: number;
+};
+
+type KaryawanKehadiran = { id: string; nama: string; persen: number };
+type Kehadiran = {
+  periodeLabel: string;
+  "Tegal Alur": KaryawanKehadiran[];
+  Menceng: KaryawanKehadiran[];
 };
 
 type IzinTerbaru = {
@@ -42,6 +51,7 @@ const PERIODE_LABEL: Record<string, string> = {
 export default function AdminDashboard() {
   const [stat, setStat] = useState<Statistik | null>(null);
   const [izin, setIzin] = useState<IzinTerbaru[]>([]);
+  const [kehadiran, setKehadiran] = useState<Kehadiran | null>(null);
   const [periode, setPeriode] = useState("bulan");
 
   async function muat(p = periode) {
@@ -49,6 +59,7 @@ export default function AdminDashboard() {
     const data = await res.json();
     setStat(data.statistik);
     setIzin(data.izinTerbaru ?? []);
+    setKehadiran(data.kehadiran ?? null);
   }
 
   useEffect(() => {
@@ -100,6 +111,12 @@ export default function AdminDashboard() {
       warna: "text-orange-600",
       href: "/admin/kontrak-habis",
     },
+    {
+      label: "Pendaftaran Menunggu",
+      nilai: stat.pendaftaranMenunggu,
+      warna: "text-pink-600",
+      href: "/admin/pendaftaran",
+    },
   ];
 
   return (
@@ -122,7 +139,7 @@ export default function AdminDashboard() {
           ))}
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
         {kartu.map((k) =>
           k.href ? (
             <Link
@@ -222,6 +239,51 @@ export default function AdminDashboard() {
           </div>
         )}
       </div>
+
+      {kehadiran && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {(["Tegal Alur", "Menceng"] as const).map((lokasi) => (
+            <div key={lokasi} className="rounded-xl bg-white p-6 shadow-sm">
+              <h2 className="font-semibold">
+                Tingkat Kehadiran — {lokasi}
+              </h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Periode berjalan ({kehadiran.periodeLabel}) · terendah dulu
+              </p>
+              {kehadiran[lokasi].length === 0 ? (
+                <p className="mt-3 text-sm text-slate-500">
+                  Belum ada karyawan di lokasi ini.
+                </p>
+              ) : (
+                <div className="mt-3 overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-500">
+                        <th className="py-2 pr-4">#</th>
+                        <th className="py-2 pr-4">Nama</th>
+                        <th className="py-2">Kehadiran</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {kehadiran[lokasi].map((k, idx) => (
+                        <tr key={k.id} className="border-b border-slate-100">
+                          <td className="py-2 pr-4 text-slate-400">{idx + 1}</td>
+                          <td className="py-2 pr-4 font-medium">{k.nama}</td>
+                          <td
+                            className={`py-2 font-semibold ${warnaKehadiran(k.persen)}`}
+                          >
+                            {k.persen}%
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

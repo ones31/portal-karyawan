@@ -6,6 +6,7 @@ type UserRow = {
   email: string | null;
   password: string;
   role: "SUPER_ADMIN" | "ADMIN" | "KARYAWAN";
+  statusAkun: "MENUNGGU" | "AKTIF" | "DITOLAK";
 };
 
 // Cari user berdasarkan nama TANPA membedakan huruf besar/kecil
@@ -13,7 +14,14 @@ type UserRow = {
 export async function cariUserByNama(nama: string): Promise<UserRow | null> {
   return prisma.user.findFirst({
     where: { nama: { equals: nama, mode: "insensitive" } },
-    select: { id: true, nama: true, email: true, password: true, role: true },
+    select: {
+      id: true,
+      nama: true,
+      email: true,
+      password: true,
+      role: true,
+      statusAkun: true,
+    },
   });
 }
 
