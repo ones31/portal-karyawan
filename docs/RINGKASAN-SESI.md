@@ -4,7 +4,9 @@
 
 ## Status saat ini
 
-**Aplikasi sudah LIVE di produksi:** https://portal-karyawan-theta.vercel.app (Vercel, deploy 15 Jul 2026). Database **PostgreSQL (Neon)**, file surat dokter di **Vercel Blob** (mode private), semua env var (`DATABASE_URL`, `JWT_SECRET`, kunci VAPID, `BLOB_READ_WRITE_TOKEN`) terpasang di Vercel. Rencana trial ganda Vercel+Railway **dibatalkan** — user memutuskan cukup Vercel saja. Dev lokal (`npm run dev`, http://localhost:3000) tetap jalan dengan database Neon yang sama.
+**Aplikasi sudah LIVE di produksi:** https://portal-karyawan-theta.vercel.app **dan** domain custom **https://www.marmo.my.id** (keduanya alias ke deployment production yang sama di Vercel; ditemukan alias domain custom ini saat deploy 15 Jul 2026 malam — belum tercatat sebelumnya, kemungkinan disiapkan user di luar sesi Claude). Database **PostgreSQL (Neon)**, file surat dokter di **Vercel Blob** (mode private), semua env var (`DATABASE_URL`, `JWT_SECRET`, kunci VAPID, `BLOB_READ_WRITE_TOKEN`) terpasang di Vercel. Rencana trial ganda Vercel+Railway **dibatalkan** — user memutuskan cukup Vercel saja. Dev lokal (`npm run dev`, http://localhost:3000) tetap jalan dengan database Neon yang sama.
+
+**Deploy terakhir:** 15 Jul 2026, commit `d1f0e42` ("nama karyawan jadi tautan edit, wajib pilih lokasi saat approve pendaftaran, backfill kontrak karyawan lama") — status READY, sudah dicek via curl (200 di kedua domain).
 
 ## ✅ Perbaikan keamanan pasca-live — SELESAI (dikerjakan di sesi Claude Cowork, 15 Jul 2026)
 
