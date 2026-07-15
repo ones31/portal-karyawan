@@ -62,32 +62,11 @@ export default function DaftarKaryawanPage() {
   });
   const [error, setError] = useState("");
   const [mengirim, setMengirim] = useState(false);
-  const [menghapus, setMenghapus] = useState<string | null>(null);
 
   async function muat(p = periode) {
     const res = await fetch(`/api/admin/karyawan?periode=${p}`);
     const { karyawan } = await res.json();
     setDaftar(karyawan ?? []);
-  }
-
-  async function hapus(k: Karyawan) {
-    if (
-      !confirm(
-        `Hapus akun karyawan "${k.nama}"? Seluruh data pribadi, kontrak, riwayat izin, dan surat dokter miliknya akan ikut terhapus permanen. Gunakan ini untuk karyawan yang sudah resign.`
-      )
-    )
-      return;
-    setMenghapus(k.id);
-    const res = await fetch(`/api/admin/karyawan/${k.id}`, {
-      method: "DELETE",
-    });
-    setMenghapus(null);
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      alert(data.error ?? "Gagal menghapus karyawan.");
-      return;
-    }
-    muat();
   }
 
   useEffect(() => {
@@ -328,10 +307,9 @@ export default function DaftarKaryawanPage() {
                 <th className="py-2 pr-4">
                   Izin Sakit ({PERIODE_LABEL[periode]})
                 </th>
-                <th className="py-2 pr-4">
+                <th className="py-2">
                   Izin Lain-lain ({PERIODE_LABEL[periode]})
                 </th>
-                <th className="py-2">Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -341,7 +319,12 @@ export default function DaftarKaryawanPage() {
                 return (
                   <tr key={k.id} className="border-b border-slate-100">
                     <td className="py-3 pr-4">
-                      <p className="font-medium">{k.nama}</p>
+                      <Link
+                        href={`/admin/karyawan/${k.id}`}
+                        className="font-medium text-blue-700 hover:underline"
+                      >
+                        {k.nama}
+                      </Link>
                       {k.email && (
                         <p className="text-xs text-slate-500">{k.email}</p>
                       )}
@@ -422,24 +405,7 @@ export default function DaftarKaryawanPage() {
                       )}
                     </td>
                     <td className="py-3 pr-4 text-center">{k.jumlahIzinSakit}</td>
-                    <td className="py-3 pr-4 text-center">{k.jumlahIzinLainnya}</td>
-                    <td className="py-3">
-                      <div className="flex gap-2">
-                        <Link
-                          href={`/admin/karyawan/${k.id}`}
-                          className="rounded-lg border border-blue-600 px-3 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
-                        >
-                          Edit
-                        </Link>
-                        <button
-                          onClick={() => hapus(k)}
-                          disabled={menghapus === k.id}
-                          className="rounded-lg border border-red-600 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
-                        >
-                          {menghapus === k.id ? "..." : "Hapus"}
-                        </button>
-                      </div>
-                    </td>
+                    <td className="py-3 text-center">{k.jumlahIzinLainnya}</td>
                   </tr>
                 );
               })}

@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sesiSaatIni } from "@/lib/auth";
-import { tambahBulan } from "@/lib/cari-user";
-import { KONTRAK_PERCOBAAN, kontrakSatuTahun } from "@/lib/dokumen-toko";
+import { hitungMasaKontrakOtomatis } from "@/lib/kontrak-otomatis";
 import { statusMasaKerja } from "@/lib/masa-kerja";
 
 // Tanda tangan persetujuan peraturan toko & perjanjian kerja saat onboarding
@@ -63,25 +62,11 @@ export async function POST(req: Request) {
         await prisma.kontrak.delete({ where: { userId: user.id } });
       }
     } else {
-      const akhirTigaBulan = tambahBulan(tanggalMasuk, 3);
-      let mulaiKontrak: Date;
-      let akhirKontrak: Date;
-      let isiKontrak: string;
-      if (sekarang < akhirTigaBulan) {
-        mulaiKontrak = tanggalMasuk;
-        akhirKontrak = akhirTigaBulan;
-        isiKontrak = KONTRAK_PERCOBAAN;
-      } else {
-        // Kontrak 1 tahun terhitung dari akhir masa 3 bulan; untuk karyawan lama,
-        // periode bergulir per tahun sampai mencakup tanggal hari ini.
-        mulaiKontrak = akhirTigaBulan;
-        akhirKontrak = tambahBulan(mulaiKontrak, 12);
-        while (akhirKontrak < sekarang) {
-          mulaiKontrak = akhirKontrak;
-          akhirKontrak = tambahBulan(mulaiKontrak, 12);
-        }
-        isiKontrak = kontrakSatuTahun(mulaiKontrak, akhirKontrak);
-      }
+      // statusMasaKerja sudah dicek != "TETAP" di atas, jadi hasil ini tidak null
+      const { mulaiKontrak, akhirKontrak, isiKontrak } = hitungMasaKontrakOtomatis(
+        tanggalMasuk,
+        sekarang
+      )!;
 
       const dataTtd = {
         tandaTangan,

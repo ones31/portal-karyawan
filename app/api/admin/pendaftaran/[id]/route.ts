@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sesiSaatIni, adalahAdmin } from "@/lib/auth";
 import { kirimNotifKeUser } from "@/lib/push";
+import { lokasiValid } from "@/lib/lokasi";
 
 // Setujui / tolak pendaftaran mandiri karyawan baru
 export async function PATCH(
@@ -14,9 +15,15 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { statusAkun } = await req.json();
+  const { statusAkun, lokasi } = await req.json();
   if (!["AKTIF", "DITOLAK"].includes(statusAkun)) {
     return NextResponse.json({ error: "Status tidak valid" }, { status: 400 });
+  }
+  if (statusAkun === "AKTIF" && !lokasiValid(lokasi)) {
+    return NextResponse.json(
+      { error: "Lokasi wajib dipilih (Tegal Alur atau Menceng) saat menyetujui pendaftaran" },
+      { status: 400 }
+    );
   }
 
   const target = await prisma.user.findUnique({
@@ -38,7 +45,7 @@ export async function PATCH(
 
   const user = await prisma.user.update({
     where: { id },
-    data: { statusAkun },
+    data: { statusAkun, ...(statusAkun === "AKTIF" ? { lokasi } : {}) },
   });
 
   await kirimNotifKeUser(user.id, {

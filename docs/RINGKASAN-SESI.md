@@ -6,13 +6,13 @@
 
 **Aplikasi sudah LIVE di produksi:** https://portal-karyawan-theta.vercel.app (Vercel, deploy 15 Jul 2026). Database **PostgreSQL (Neon)**, file surat dokter di **Vercel Blob** (mode private), semua env var (`DATABASE_URL`, `JWT_SECRET`, kunci VAPID, `BLOB_READ_WRITE_TOKEN`) terpasang di Vercel. Rencana trial ganda Vercel+Railway **dibatalkan** — user memutuskan cukup Vercel saja. Dev lokal (`npm run dev`, http://localhost:3000) tetap jalan dengan database Neon yang sama.
 
-## ⏭️ Pekerjaan berikutnya (belum diputuskan user)
+## ✅ Perbaikan keamanan pasca-live — SELESAI (dikerjakan di sesi Claude Cowork, 15 Jul 2026)
 
-Di akhir sesi sebelumnya, Claude menawarkan 2 perbaikan keamanan pasca-live yang **belum dijawab user** (user memilih pindah sesi dulu). Tanyakan di awal sesi baru:
-1. **Ganti password lemah** — password karyawan (`123`) dan admin (`admin123` dll.) kini berisiko karena aplikasi sudah bisa diakses publik dari internet.
-2. **Tutup/batasi pendaftaran mandiri** (`/daftar`) — saat ini siapa pun yang tahu URL bisa mendaftar jadi akun karyawan tanpa persetujuan admin.
+Kedua item yang tadinya menggantung sudah dikerjakan user lewat sesi Claude Cowork terpisah, commit `2571ec8` ("ganti password mandiri, approval pendaftaran karyawan, ranking kehadiran per lokasi"), sudah di-push ke `origin/main` dan **live di produksi** (deployment Vercel status Ready):
+1. **Ganti Password Mandiri** (PRD Feature 15) — menu "Ganti Password" di navbar untuk semua role, endpoint `PATCH /api/auth/ganti-password`. Password lama tetap `123`/`admin123` dll. kalau belum diganti manual oleh masing-masing user — ini bukan paksa-ganti otomatis, hanya menyediakan jalannya.
+2. **Persetujuan Admin untuk Pendaftaran Mandiri** (PRD Feature 16) — akun baru dari `/daftar` kini berstatus `statusAkun: MENUNGGU` sampai admin approve di `/admin/pendaftaran`; `DITOLAK` memblokir login.
 
-Keduanya tidak darurat/blocking, tapi sebaiknya tidak dibiarkan lama. Tawarkan opsi konkret (paksa ganti password saat login pertama, kode undangan pendaftaran, dll.) daripada langsung eksekusi — ini keputusan produk, bukan keputusan teknis semata.
+Bonus di commit yang sama: **Feature 17** — ranking persentase kehadiran per lokasi di dashboard admin/owner.
 
 ## Alat & kredensial yang sudah tersedia di Mac ini
 
@@ -97,8 +97,8 @@ Rencana awal "coba Vercel + Railway dulu" **diganti** user jadi langsung Vercel 
 ## Hal yang perlu diingat
 
 - `JWT_SECRET` **sudah diganti** ke nilai acak kuat (baik lokal maupun produksi) — item ini SELESAI, coret dari catatan lama manapun yang bilang belum.
-- **⚠️ Sekarang aplikasi sudah LIVE di internet** — password karyawan (`123`) & admin (`admin123` dll.) yang tadinya "cukup untuk jaringan internal" sekarang jadi risiko nyata karena URL-nya bisa diakses siapa saja yang tahu linknya. Pertimbangkan segera: paksa ganti password saat login pertama, atau minimal ganti password admin/owner ke sesuatu yang kuat.
-- Pendaftaran karyawan baru (`/daftar`) saat ini terbuka tanpa verifikasi admin — siapa pun yang tahu URL bisa daftar jadi akun karyawan. Perlu dipertimbangkan menambah kode undangan atau approval admin.
+- Password default karyawan impor (`123`) & admin (`admin123` dll.) **belum diganti** — fitur Ganti Password Mandiri sudah ada (lihat atas), tapi tidak otomatis memaksa siapa pun mengganti. Kalau user minta perketat lebih lanjut (mis. paksa ganti di login pertama), itu keputusan produk baru, bukan bug.
+- Pendaftaran karyawan baru (`/daftar`) kini **sudah butuh approval admin** (Feature 16) — item ini SELESAI, coret dari catatan lama manapun yang bilang masih terbuka bebas.
 - `.vercelignore` sudah dibuat — kalau ada perubahan konfigurasi deploy nanti, ingat `vercel deploy` TIDAK otomatis ikut `.gitignore`, harus dicek manual.
 
 ## Catatan penting lain
