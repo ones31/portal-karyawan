@@ -4,7 +4,7 @@
 
 ## Status saat ini
 
-Aplikasi **berjalan lengkap secara lokal** (`npm run dev`, http://localhost:3000), database sudah **PostgreSQL (Neon)** — bukan SQLite lagi (dimigrasikan 14 Jul 2026, semua data lama dipulihkan utuh). **Sedang proses menuju deploy trial ganda: Vercel + Railway** (lihat "Keputusan tertunda" di bawah) — belum online publik.
+**Aplikasi sudah LIVE di produksi:** https://portal-karyawan-theta.vercel.app (Vercel, deploy 15 Jul 2026). Database **PostgreSQL (Neon)**, file surat dokter di **Vercel Blob** (mode private), semua env var (`DATABASE_URL`, `JWT_SECRET`, kunci VAPID, `BLOB_READ_WRITE_TOKEN`) terpasang di Vercel. Rencana trial ganda Vercel+Railway **dibatalkan** — user memutuskan cukup Vercel saja. Dev lokal (`npm run dev`, http://localhost:3000) tetap jalan dengan database Neon yang sama.
 
 ## Apa aplikasinya
 
@@ -55,27 +55,35 @@ Kalau schema Prisma baru diubah: `npx prisma migrate dev --name <nama>` lalu **r
 9. Import karyawan massal dari spreadsheet toko (2 lokasi, ~45 orang, password default `123`)
 10. PWA installable + push notification (pengajuan baru → admin; hasil approval → karyawan)
 
-## Keputusan & progres deploy
+## Deploy — SELESAI (15 Jul 2026)
 
-User memilih opsi **"coba dua-duanya dulu"**: deploy trial paralel ke **Vercel** dan **Railway** dari satu codebase yang sama, bandingkan, lalu matikan salah satu. Supaya satu kode bisa jalan di kedua platform tanpa bercabang, **database disamakan pakai PostgreSQL (Neon) di semua tempat** — termasuk dev lokal.
+Rencana awal "coba Vercel + Railway dulu" **diganti** user jadi langsung Vercel saja. Database disamakan pakai **PostgreSQL (Neon)** untuk dev lokal maupun produksi (satu database yang sama).
 
-**Progres:**
-- ✅ Akun Neon dibuat, `DATABASE_URL` sudah di `.env`
-- ✅ Migrasi SQLite → PostgreSQL selesai: schema diubah, migrasi lama diarsipkan ke `prisma/backup/migrations-sqlite-lama/`, seluruh data (54 user, 5 profil, 4 kontrak, 4 izin) dipulihkan dan diverifikasi utuh di Neon
-- ✅ Bug ditemukan & diperbaiki saat migrasi: `lib/cari-user.ts` pakai raw SQL tanpa kutip identifier (`FROM User`) — jalan di SQLite, error di Postgres. Diganti pakai `mode: "insensitive"` native Prisma (lebih rapi, sudah didukung Postgres)
-- ✅ `.gitignore` diperbarui: `prisma/dev.db`, `prisma/backup/` (dump data karyawan asli), dan `*.txt` (cookie jar sisa uji curl) tidak boleh ikut ke git
-- ✅ `gh` CLI terpasang & login sebagai akun **ones31**
-- ✅ Repo GitHub **privat** dibuat & kode ter-push: **https://github.com/ones31/portal-karyawan** (branch `main`). Sudah diverifikasi: repo privat, tidak ada `.env`/`dev.db`/`uploads`/secret yang ikut ter-commit.
-- ⬜ **Belum dikerjakan:** abstraksi penyimpanan surat dokter (disk lokal / Vercel Blob tergantung platform), deploy ke Vercel, deploy ke Railway, setup env vars di kedua platform
+**Yang sudah dikerjakan:**
+- ✅ Migrasi SQLite → PostgreSQL selesai: seluruh data (54 user, 5 profil, 4 kontrak, 4 izin) dipulihkan & diverifikasi utuh di Neon. Migrasi lama diarsipkan di `prisma/backup/migrations-sqlite-lama/`.
+- ✅ Bug diperbaiki: `lib/cari-user.ts` pakai raw SQL tanpa kutip identifier (`FROM User`) — jalan di SQLite, error di Postgres. Diganti `mode: "insensitive"` native Prisma.
+- ✅ Repo GitHub **privat**: https://github.com/ones31/portal-karyawan (branch `main`)
+- ✅ `gh` CLI & `vercel` CLI terpasang, login via Personal Access Token (bukan browser flow, supaya tidak macet di sesi non-interaktif)
+- ✅ Proyek Vercel `marmotoko/portal-karyawan` dibuat; **Vercel Blob store** (mode private) dibuat & di-link untuk penyimpanan surat dokter (Vercel tidak punya disk permanen)
+- ✅ `lib/surat-dokter.ts` diberi abstraksi: otomatis pakai Blob kalau `BLOB_READ_WRITE_TOKEN` ada, kalau tidak fallback ke disk lokal (dev/Railway). 1 file surat dokter lama (Bejo) dimigrasikan manual ke Blob.
+- ✅ `JWT_SECRET` baru dibuat (`openssl rand -base64 48`), diisi ke `.env` lokal & Vercel env vars (production+preview)
+- ✅ Semua env var terpasang di Vercel: `DATABASE_URL`, `JWT_SECRET`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `BLOB_READ_WRITE_TOKEN` (auto)
+- ✅ **Live di:** https://portal-karyawan-theta.vercel.app — diuji: login (owner/karyawan), dashboard admin (51 karyawan, data akurat), surat dokter via Blob (byte-identik dengan aslinya)
 
-**Sesi berikutnya lanjut dari sini** — langkah selanjutnya: buat akun Vercel & Railway (kalau belum), hubungkan ke repo `ones31/portal-karyawan`, set environment variables (`DATABASE_URL`, `JWT_SECRET` baru yang kuat, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`), lalu deploy ke kedua platform untuk trial. Shared hosting sudah dicoret sejak awal (tidak cocok untuk Next.js).
+**Insiden yang terjadi & sudah diperbaiki:**
+1. `.env` (berisi password Neon + kunci VAPID privat) sempat ikut ter-upload ke deployment pertama karena `vercel deploy` CLI **tidak otomatis memakai `.gitignore`** — beda dari git. Diperbaiki dengan membuat `.vercelignore` eksplisit. Deployment yang bocor sudah **dihapus** dari Vercel.
+2. Deploy sempat diblokir `BLOCKED`/`TEAM_ACCESS_REQUIRED` — bukan soal email verifikasi (sempat salah duga), tapi karena commit git pakai email asal (`seno@tokomarmo.local`) yang tidak cocok dengan akun Vercel/GitHub user. Diperbaiki dengan `git filter-branch` menulis ulang seluruh author history ke email asli user (`emailsenosaputro@gmail.com`) + force-push (aman, repo privat solo).
 
-## Hal yang perlu diingat sebelum go-live (belum dikerjakan)
+**Belum dikerjakan (opsional, tidak mendesak):**
+- Menghubungkan GitHub repo ke Vercel untuk auto-deploy tiap push (sekarang deploy manual via `vercel deploy --prod`)
+- Rotasi password Neon sebagai kehati-hatian ekstra pasca insiden #1 di atas (risiko rendah — hanya sempat ada di deployment privat Vercel milik user sendiri, sudah dihapus)
 
-- `JWT_SECRET` masih default — WAJIB ganti ke nilai acak kuat sebelum publik
-- Password karyawan (`123`) & admin (`admin123` dll.) cukup untuk jaringan internal, terlalu lemah untuk internet terbuka
-- Pendaftaran karyawan baru saat ini terbuka tanpa verifikasi admin — perlu dipertimbangkan untuk versi publik
-- Kunci VAPID (push notification) ada di `.env`, jangan sampai ikut ke git publik
+## Hal yang perlu diingat
+
+- `JWT_SECRET` **sudah diganti** ke nilai acak kuat (baik lokal maupun produksi) — item ini SELESAI, coret dari catatan lama manapun yang bilang belum.
+- **⚠️ Sekarang aplikasi sudah LIVE di internet** — password karyawan (`123`) & admin (`admin123` dll.) yang tadinya "cukup untuk jaringan internal" sekarang jadi risiko nyata karena URL-nya bisa diakses siapa saja yang tahu linknya. Pertimbangkan segera: paksa ganti password saat login pertama, atau minimal ganti password admin/owner ke sesuatu yang kuat.
+- Pendaftaran karyawan baru (`/daftar`) saat ini terbuka tanpa verifikasi admin — siapa pun yang tahu URL bisa daftar jadi akun karyawan. Perlu dipertimbangkan menambah kode undangan atau approval admin.
+- `.vercelignore` sudah dibuat — kalau ada perubahan konfigurasi deploy nanti, ingat `vercel deploy` TIDAK otomatis ikut `.gitignore`, harus dicek manual.
 
 ## Catatan penting lain
 

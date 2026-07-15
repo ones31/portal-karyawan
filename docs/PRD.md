@@ -89,8 +89,9 @@ Dokumen ini adalah **sumber konteks utama** untuk project ini. Saat membantu cod
 - **Framework:** Next.js 16 (TypeScript) + Tailwind CSS — web app, API routes untuk backend
 - **Database:** PostgreSQL (Neon) via Prisma 6 — dimigrasikan dari SQLite pada 14 Jul 2026 sebagai persiapan deploy ke cloud (Vercel tidak punya disk permanen untuk SQLite)
 - **Auth:** JWT di cookie httpOnly, login memakai **nama** (bukan email), sesi 8 jam
-- **File upload:** surat dokter disimpan di folder `uploads/` (di luar publik), diakses lewat API dengan pemeriksaan login
+- **File upload:** surat dokter — Vercel Blob (mode private) di produksi, folder `uploads/` lokal untuk dev/platform lain (auto-switch di `lib/surat-dokter.ts` berdasar `BLOB_READ_WRITE_TOKEN`), diakses lewat API dengan pemeriksaan login
 - **Arsitektur API-first:** semua data lewat REST API `/api/*` (JSON) — siap dipakai aplikasi Android nanti
+- **Deploy:** Vercel, live di https://portal-karyawan-theta.vercel.app (sejak 15 Jul 2026). Repo GitHub privat: `ones31/portal-karyawan`.
 
 ### 2.3 Constraint Teknis
 - [ v] Harus mobile responsive
@@ -253,7 +254,7 @@ Dokumen ini adalah **sumber konteks utama** untuk project ini. Saat membantu cod
 | **2 — Core Workflow** | Membuat alur kerja utama berjalan end-to-end | Onboarding → TTD kontrak → pengajuan izin (+upload surat dokter) → approval; edit karyawan | Workflow utama berjalan dari awal sampai akhir; admin bisa update status | ✅ Selesai |
 | **3 — Dashboard & Reporting** | Memberikan insight untuk owner/admin | Summary data, kartu dashboard klik-ke-rincian, filter periode, grafik sederhana, export data | Owner bisa lihat performa & rekap izin/kontrak | 🔶 Sebagian (tersisa: grafik & export) |
 | **4 — Automation & Integration** | Mengurangi pekerjaan manual | WhatsApp/email notification (kontrak habis, izin baru), auto-generate report, aplikasi Android | Sistem bisa kirim update otomatis | ⬜ Belum |
-| **5 — Optimization** | Merapikan sistem untuk jangka panjang | Performance, security, UI/UX, bug fixing, backup, dokumentasi, set `JWT_SECRET` | Sistem stabil; UX rapi; siap scaling | 🔶 Sebagian (DB Postgres ✅; JWT_SECRET & backup rutin belum) |
+| **5 — Optimization** | Merapikan sistem untuk jangka panjang | Performance, security, UI/UX, bug fixing, backup, dokumentasi, set `JWT_SECRET` | Sistem stabil; UX rapi; siap scaling | 🔶 Sebagian (DB Postgres ✅, JWT_SECRET ✅, deploy Vercel ✅; backup rutin & password karyawan kuat masih belum) |
 
 ---
 
