@@ -98,6 +98,7 @@ export default function EditKaryawanPage() {
   const [pesan, setPesan] = useState<{ jenis: "sukses" | "error"; teks: string } | null>(null);
   const [menyimpan, setMenyimpan] = useState(false);
   const [menghapus, setMenghapus] = useState(false);
+  const [mereset, setMereset] = useState(false);
 
   useEffect(() => {
     fetch(`/api/admin/karyawan/${id}`)
@@ -142,6 +143,32 @@ export default function EditKaryawanPage() {
     setPesan({ jenis: "sukses", teks: "Perubahan tersimpan." });
     setForm((f) => ({ ...f, passwordBaru: "" }));
     router.refresh();
+  }
+
+  async function resetPasswordDefault() {
+    if (!detail) return;
+    if (
+      !confirm(
+        `Reset password "${detail.nama}" ke default ("123")? Beri tahu karyawan yang bersangkutan password barunya.`
+      )
+    )
+      return;
+    setPesan(null);
+    setMereset(true);
+    const res = await fetch(`/api/admin/karyawan/${id}/reset-password`, {
+      method: "POST",
+    });
+    setMereset(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setPesan({ jenis: "error", teks: data.error ?? "Gagal mereset password." });
+      return;
+    }
+    const data = await res.json();
+    setPesan({
+      jenis: "sukses",
+      teks: `Password direset ke default: "${data.password}". Beri tahu karyawan yang bersangkutan.`,
+    });
   }
 
   async function hapus() {
@@ -267,6 +294,17 @@ export default function EditKaryawanPage() {
             placeholder="minimal 6 karakter"
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
           />
+          <button
+            type="button"
+            onClick={resetPasswordDefault}
+            disabled={mereset}
+            className="mt-2 rounded-lg border border-amber-600 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+          >
+            {mereset ? "Mereset..." : "Reset ke Password Default (\"123\")"}
+          </button>
+          <p className="mt-1 text-xs text-slate-500">
+            Untuk karyawan yang mengubah password sendiri lalu lupa.
+          </p>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>

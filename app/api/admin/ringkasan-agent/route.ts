@@ -45,6 +45,7 @@ export async function GET(req: Request) {
   return NextResponse.json({
     tanggal: new Date().toISOString().slice(0, 10),
     izinMenunggu: izinMenunggu.map((i) => ({
+      id: i.id,
       nama: i.user.nama,
       jenis: i.jenis,
       tanggalMulai: i.tanggalMulai,
@@ -52,6 +53,7 @@ export async function GET(req: Request) {
       alasan: i.alasan,
     })),
     tukarLiburMenunggu: tukarLiburMenunggu.map((t) => ({
+      id: t.id,
       nama: t.user.nama,
       tanggalLibur: t.tanggalLibur,
       tukarDengan: t.tukarDengan,

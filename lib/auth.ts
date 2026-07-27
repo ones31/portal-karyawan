@@ -15,6 +15,11 @@ export function adalahAdmin(role: SessionPayload["role"]): boolean {
   return role === "ADMIN" || role === "SUPER_ADMIN";
 }
 
+// Password default karyawan (dipakai saat impor & saat admin reset password
+// karyawan yang lupa password sendiri). Nilai sama dengan yang dipakai
+// prisma/import-karyawan*.ts — JANGAN diubah tanpa diminta (lihat AGENTS.md).
+export const PASSWORD_DEFAULT_KARYAWAN = "123";
+
 export async function buatToken(payload: SessionPayload): Promise<string> {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })

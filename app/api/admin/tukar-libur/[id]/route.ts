@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { sesiSaatIni, adalahAdmin } from "@/lib/auth";
-import { kirimNotifKeUser } from "@/lib/push";
+import { prosesTukarLibur } from "@/lib/approval";
 
 // Setujui / tolak pengajuan tukar libur
 export async function PATCH(
@@ -19,22 +18,6 @@ export async function PATCH(
     return NextResponse.json({ error: "Status tidak valid" }, { status: 400 });
   }
 
-  const tukarLibur = await prisma.tukarLibur.update({
-    where: { id },
-    data: { status },
-  });
-
-  // Beri tahu karyawan hasil pengajuannya
-  await kirimNotifKeUser(tukarLibur.userId, {
-    judul: `Tukar libur ${status === "DISETUJUI" ? "disetujui ✅" : "ditolak ❌"}`,
-    isi: `Tukar libur ${tukarLibur.tanggalLibur.toLocaleDateString("id-ID", {
-      day: "numeric",
-      month: "short",
-    })} dengan ${tukarLibur.tukarDengan} ${
-      status === "DISETUJUI" ? "telah disetujui" : "ditolak"
-    }.`,
-    url: "/karyawan/izin",
-  }).catch(() => {});
-
+  const tukarLibur = await prosesTukarLibur(id, status);
   return NextResponse.json({ tukarLibur });
 }
