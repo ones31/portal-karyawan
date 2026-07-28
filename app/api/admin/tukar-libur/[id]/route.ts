@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { sesiSaatIni, adalahAdmin } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { sesiSaatIni, adalahAdmin, bolehAksesLokasi } from "@/lib/auth";
 import { prosesTukarLibur } from "@/lib/approval";
 
 // Setujui / tolak pengajuan tukar libur
@@ -16,6 +17,23 @@ export async function PATCH(
   const { status } = await req.json();
   if (!["DISETUJUI", "DITOLAK"].includes(status)) {
     return NextResponse.json({ error: "Status tidak valid" }, { status: 400 });
+  }
+
+  const target = await prisma.tukarLibur.findUnique({
+    where: { id },
+    select: { user: { select: { lokasi: true } } },
+  });
+  if (!target) {
+    return NextResponse.json(
+      { error: "Tukar libur tidak ditemukan" },
+      { status: 404 }
+    );
+  }
+  if (!bolehAksesLokasi(sesi, target.user.lokasi)) {
+    return NextResponse.json(
+      { error: "Tukar libur tidak ditemukan" },
+      { status: 404 }
+    );
   }
 
   const tukarLibur = await prosesTukarLibur(id, status);

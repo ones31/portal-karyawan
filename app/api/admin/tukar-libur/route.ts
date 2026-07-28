@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sesiSaatIni, adalahAdmin } from "@/lib/auth";
+import { sesiSaatIni, adalahAdmin, filterLokasiSesi } from "@/lib/auth";
 
 // Daftar semua pengajuan tukar libur (untuk admin/owner)
 export async function GET() {
@@ -10,6 +10,7 @@ export async function GET() {
   }
 
   const daftar = await prisma.tukarLibur.findMany({
+    where: { user: filterLokasiSesi(sesi) },
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
     include: { user: { select: { nama: true, lokasi: true } } },
   });

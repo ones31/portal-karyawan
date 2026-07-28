@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { LABEL_JENIS_IZIN, MAKS_HARI_MENIKAH, jumlahHari, type JenisIzin } from "@/lib/izin";
 
 const DAFTAR_LOKASI = ["Tegal Alur", "Menceng"];
 
@@ -55,7 +56,7 @@ type Detail = {
   } | null;
   izin: {
     id: string;
-    jenis: "SAKIT" | "LAINNYA";
+    jenis: JenisIzin;
     tanggalMulai: string;
     tanggalAkhir: string;
     alasan: string;
@@ -99,9 +100,37 @@ export default function EditKaryawanPage() {
   const [menyimpan, setMenyimpan] = useState(false);
   const [menghapus, setMenghapus] = useState(false);
   const [mereset, setMereset] = useState(false);
+  const [lokasiAksesAdmin, setLokasiAksesAdmin] = useState<string | null>(null);
+  const [superAdmin, setSuperAdmin] = useState(false);
+
+  // Form "Ajukan Izin untuk Karyawan Ini" — solusi kalau karyawan terkendala
+  // membuka portal sendiri. Meniru form di app/karyawan/izin/page.tsx.
+  const [tampilFormIzin, setTampilFormIzin] = useState(false);
+  const [jenisIzinBaru, setJenisIzinBaru] = useState<JenisIzin>("SAKIT");
+  const [tipeSakitBaru, setTipeSakitBaru] = useState<"TANPA" | "DENGAN">("TANPA");
+  const [fileIzinBaru, setFileIzinBaru] = useState<File | null>(null);
+  const inputFileIzinRef = useRef<HTMLInputElement>(null);
+  const [tanggalMulaiBaru, setTanggalMulaiBaru] = useState("");
+  const [tanggalAkhirBaru, setTanggalAkhirBaru] = useState("");
+  const [alasanBaru, setAlasanBaru] = useState("");
+  const [errorIzin, setErrorIzin] = useState("");
+  const [mengirimIzin, setMengirimIzin] = useState(false);
+
+  // Admin ber-lokasiAkses hanya boleh memindahkan karyawan ke lokasinya sendiri
+  const lokasiOpsi =
+    !superAdmin && lokasiAksesAdmin ? [lokasiAksesAdmin] : DAFTAR_LOKASI;
 
   useEffect(() => {
-    fetch(`/api/admin/karyawan/${id}`)
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => {
+        setSuperAdmin(d.user?.role === "SUPER_ADMIN");
+        setLokasiAksesAdmin(d.user?.lokasiAkses ?? null);
+      });
+  }, []);
+
+  function muatDetail() {
+    return fetch(`/api/admin/karyawan/${id}`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then(({ karyawan }: { karyawan: Detail }) => {
         setDetail(karyawan);
@@ -123,6 +152,11 @@ export default function EditKaryawanPage() {
         setProfilForm(pf);
       })
       .catch(() => setTidakDitemukan(true));
+  }
+
+  useEffect(() => {
+    muatDetail();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   async function simpan(e: React.FormEvent) {
@@ -169,6 +203,53 @@ export default function EditKaryawanPage() {
       jenis: "sukses",
       teks: `Password direset ke default: "${data.password}". Beri tahu karyawan yang bersangkutan.`,
     });
+  }
+
+  async function ajukanIzin(e: React.FormEvent) {
+    e.preventDefault();
+    setErrorIzin("");
+    if (jenisIzinBaru === "SAKIT" && tipeSakitBaru === "DENGAN" && !fileIzinBaru) {
+      setErrorIzin("Silakan pilih file surat dokter terlebih dahulu.");
+      return;
+    }
+    const akhir = jenisIzinBaru === "TUGAS_NEGARA" ? tanggalMulaiBaru : tanggalAkhirBaru;
+    if (
+      jenisIzinBaru === "MENIKAH" &&
+      tanggalMulaiBaru &&
+      akhir &&
+      jumlahHari(tanggalMulaiBaru, akhir) > MAKS_HARI_MENIKAH
+    ) {
+      setErrorIzin(`Izin menikah maksimal ${MAKS_HARI_MENIKAH} hari.`);
+      return;
+    }
+    setMengirimIzin(true);
+    const fd = new FormData();
+    fd.append("jenis", jenisIzinBaru);
+    fd.append("tanggalMulai", tanggalMulaiBaru);
+    fd.append("tanggalAkhir", akhir);
+    fd.append("alasan", alasanBaru);
+    if (jenisIzinBaru === "SAKIT" && tipeSakitBaru === "DENGAN" && fileIzinBaru) {
+      fd.append("suratDokter", fileIzinBaru);
+    }
+    const res = await fetch(`/api/admin/karyawan/${id}/izin`, {
+      method: "POST",
+      body: fd,
+    });
+    setMengirimIzin(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setErrorIzin(data.error ?? "Gagal mengajukan izin.");
+      return;
+    }
+    setJenisIzinBaru("SAKIT");
+    setTipeSakitBaru("TANPA");
+    setFileIzinBaru(null);
+    if (inputFileIzinRef.current) inputFileIzinRef.current.value = "";
+    setTanggalMulaiBaru("");
+    setTanggalAkhirBaru("");
+    setAlasanBaru("");
+    setTampilFormIzin(false);
+    muatDetail();
   }
 
   async function hapus() {
@@ -247,7 +328,7 @@ export default function EditKaryawanPage() {
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
           >
             <option value="">-- Pilih Lokasi --</option>
-            {DAFTAR_LOKASI.map((l) => (
+            {lokasiOpsi.map((l) => (
               <option key={l} value={l}>
                 {l}
               </option>
@@ -419,7 +500,154 @@ export default function EditKaryawanPage() {
       )}
 
       <div className="rounded-xl bg-white p-6 shadow-sm">
-        <h2 className="font-semibold">Riwayat Izin &amp; Surat Dokter</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold">Riwayat Izin &amp; Surat Dokter</h2>
+          <button
+            type="button"
+            onClick={() => setTampilFormIzin(!tampilFormIzin)}
+            className="rounded-lg border border-blue-600 px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50"
+          >
+            {tampilFormIzin ? "Batal" : "+ Ajukan Izin untuk Karyawan Ini"}
+          </button>
+        </div>
+        <p className="mt-1 text-xs text-slate-500">
+          Untuk karyawan yang terkendala membuka portal sendiri (mis. HP
+          rusak/tidak ada sinyal) — pengajuan tetap berstatus Menunggu seperti
+          biasa, perlu disetujui/ditolak seperti pengajuan lainnya.
+        </p>
+
+        {tampilFormIzin && (
+          <form
+            onSubmit={ajukanIzin}
+            className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4"
+          >
+            <div>
+              <label className="block text-sm font-medium">Jenis Pengajuan</label>
+              <select
+                value={jenisIzinBaru}
+                onChange={(e) => setJenisIzinBaru(e.target.value as JenisIzin)}
+                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-blue-500 focus:outline-none"
+              >
+                <option value="SAKIT">Izin Sakit</option>
+                <option value="LAINNYA">Izin Lain-lain</option>
+                <option value="MENIKAH">Izin Menikah</option>
+                <option value="TUGAS_NEGARA">Tugas Negara</option>
+              </select>
+            </div>
+
+            {jenisIzinBaru === "SAKIT" && (
+              <div>
+                <label className="block text-sm font-medium">Tipe Izin Sakit</label>
+                <div className="mt-1 space-y-2">
+                  <label className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm has-checked:border-blue-500 has-checked:bg-blue-50">
+                    <input
+                      type="radio"
+                      name="tipeSakitBaru"
+                      checked={tipeSakitBaru === "TANPA"}
+                      onChange={() => {
+                        setTipeSakitBaru("TANPA");
+                        setFileIzinBaru(null);
+                        if (inputFileIzinRef.current) inputFileIzinRef.current.value = "";
+                      }}
+                    />
+                    Tanpa surat dokter
+                  </label>
+                  <label className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm has-checked:border-blue-500 has-checked:bg-blue-50">
+                    <input
+                      type="radio"
+                      name="tipeSakitBaru"
+                      checked={tipeSakitBaru === "DENGAN"}
+                      onChange={() => setTipeSakitBaru("DENGAN")}
+                    />
+                    Dengan surat dokter
+                  </label>
+                </div>
+                {tipeSakitBaru === "DENGAN" && (
+                  <div className="mt-2">
+                    <label className="block text-sm font-medium">
+                      Upload Surat Dokter (PDF/JPG/PNG, maks 5 MB)
+                    </label>
+                    <input
+                      ref={inputFileIzinRef}
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                      onChange={(e) => setFileIzinBaru(e.target.files?.[0] ?? null)}
+                      className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-blue-600 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-blue-700"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {jenisIzinBaru === "TUGAS_NEGARA" ? (
+              <div>
+                <label className="block text-sm font-medium">Tanggal</label>
+                <input
+                  type="date"
+                  required
+                  value={tanggalMulaiBaru}
+                  onChange={(e) => setTanggalMulaiBaru(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium">Dari Tanggal</label>
+                  <input
+                    type="date"
+                    required
+                    value={tanggalMulaiBaru}
+                    onChange={(e) => setTanggalMulaiBaru(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium">Sampai Tanggal</label>
+                  <input
+                    type="date"
+                    required
+                    value={tanggalAkhirBaru}
+                    onChange={(e) => setTanggalAkhirBaru(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+            )}
+            {jenisIzinBaru === "MENIKAH" && (
+              <p className="text-xs text-slate-500">
+                Izin menikah maksimal {MAKS_HARI_MENIKAH} hari sesuai perjanjian kerja.
+              </p>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium">
+                Alasan{jenisIzinBaru === "TUGAS_NEGARA" ? " (opsional)" : ""}
+              </label>
+              <textarea
+                required={jenisIzinBaru !== "TUGAS_NEGARA"}
+                value={alasanBaru}
+                onChange={(e) => setAlasanBaru(e.target.value)}
+                rows={2}
+                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
+            {errorIzin && (
+              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+                {errorIzin}
+              </p>
+            )}
+            <button
+              type="submit"
+              disabled={mengirimIzin}
+              className="w-full rounded-lg bg-blue-600 py-2 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {mengirimIzin ? "Mengirim..." : "Ajukan Izin"}
+            </button>
+          </form>
+        )}
+
         {detail.izin.length === 0 ? (
           <p className="mt-3 text-sm text-slate-500">Belum ada pengajuan izin.</p>
         ) : (
@@ -431,7 +659,7 @@ export default function EditKaryawanPage() {
               >
                 <div>
                   <span className="font-medium">
-                    {i.jenis === "SAKIT" ? "Izin Sakit" : "Izin Lain-lain"}
+                    {LABEL_JENIS_IZIN[i.jenis]}
                   </span>
                   <span className="ml-2 text-slate-500">
                     {formatTanggal(i.tanggalMulai)} — {formatTanggal(i.tanggalAkhir)}

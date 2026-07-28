@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BATAS_HARI_KONTRAK_HABIS } from "@/lib/kontrak";
 import { statusMasaKerja } from "@/lib/masa-kerja";
+import { tautanWhatsapp } from "@/lib/whatsapp";
 
 const DAFTAR_LOKASI = ["Tegal Alur", "Menceng"];
 
@@ -49,6 +50,7 @@ export default function DaftarKaryawanPage() {
   const [lokasiTab, setLokasiTab] = useState<string>("Tegal Alur");
   const [periode, setPeriode] = useState("bulan");
   const [superAdmin, setSuperAdmin] = useState(false);
+  const [lokasiAksesAdmin, setLokasiAksesAdmin] = useState<string | null>(null);
   const [tampilForm, setTampilForm] = useState(false);
   const [form, setForm] = useState({
     nama: "",
@@ -57,11 +59,21 @@ export default function DaftarKaryawanPage() {
     lokasi: "",
     password: "",
     role: "KARYAWAN",
+    lokasiAkses: "",
     mulaiKontrak: "",
     akhirKontrak: "",
   });
   const [error, setError] = useState("");
   const [mengirim, setMengirim] = useState(false);
+
+  // Admin ber-lokasiAkses hanya boleh pilih lokasinya sendiri; owner (superAdmin)
+  // atau admin tanpa lokasiAkses (mis. data lama) tetap lihat semua opsi.
+  const lokasiOpsi =
+    !superAdmin && lokasiAksesAdmin ? [lokasiAksesAdmin] : DAFTAR_LOKASI;
+  const lokasiTabs =
+    !superAdmin && lokasiAksesAdmin
+      ? [lokasiAksesAdmin, "Belum Diatur", "Semua"]
+      : ["Tegal Alur", "Menceng", "Belum Diatur", "Semua"];
 
   async function muat(p = periode) {
     const res = await fetch(`/api/admin/karyawan?periode=${p}`);
@@ -77,7 +89,14 @@ export default function DaftarKaryawanPage() {
   useEffect(() => {
     fetch("/api/auth/me")
       .then((r) => r.json())
-      .then((d) => setSuperAdmin(d.user?.role === "SUPER_ADMIN"));
+      .then((d) => {
+        setSuperAdmin(d.user?.role === "SUPER_ADMIN");
+        setLokasiAksesAdmin(d.user?.lokasiAkses ?? null);
+        if (d.user?.role === "ADMIN" && d.user?.lokasiAkses) {
+          setLokasiTab(d.user.lokasiAkses);
+          setForm((f) => ({ ...f, lokasi: d.user.lokasiAkses }));
+        }
+      });
   }, []);
 
   async function tambah(e: React.FormEvent) {
@@ -99,9 +118,10 @@ export default function DaftarKaryawanPage() {
       nama: "",
       email: "",
       phone: "",
-      lokasi: "",
+      lokasi: lokasiOpsi.length === 1 ? lokasiOpsi[0] : "",
       password: "",
       role: "KARYAWAN",
+      lokasiAkses: "",
       mulaiKontrak: "",
       akhirKontrak: "",
     });
@@ -146,7 +166,7 @@ export default function DaftarKaryawanPage() {
       </div>
 
       <div className="flex flex-wrap gap-1 border-b border-slate-200">
-        {["Tegal Alur", "Menceng", "Belum Diatur", "Semua"].map((l) => {
+        {lokasiTabs.map((l) => {
           const jumlah =
             l === "Semua"
               ? daftar.length
@@ -216,7 +236,7 @@ export default function DaftarKaryawanPage() {
                 className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
               >
                 <option value="">-- Pilih Lokasi --</option>
-                {DAFTAR_LOKASI.map((l) => (
+                {lokasiOpsi.map((l) => (
                   <option key={l} value={l}>
                     {l}
                   </option>
@@ -244,6 +264,27 @@ export default function DaftarKaryawanPage() {
                 <option value="KARYAWAN">Karyawan</option>
                 <option value="ADMIN">Admin</option>
               </select>
+            </div>
+          )}
+          {superAdmin && form.role === "ADMIN" && (
+            <div>
+              <label className="block text-sm font-medium">Lokasi Akses</label>
+              <select
+                required
+                value={form.lokasiAkses}
+                onChange={(e) => setForm({ ...form, lokasiAkses: e.target.value })}
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
+              >
+                <option value="">-- Pilih Lokasi Akses --</option>
+                {DAFTAR_LOKASI.map((l) => (
+                  <option key={l} value={l}>
+                    {l}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-slate-500">
+                Admin ini hanya bisa melihat & mengelola karyawan di lokasi ini.
+              </p>
             </div>
           )}
           {form.role === "KARYAWAN" && (
@@ -340,7 +381,23 @@ export default function DaftarKaryawanPage() {
                       )}
                     </td>
                     <td className="py-3 pr-4 whitespace-nowrap">
-                      {k.phone ?? <span className="text-slate-400">—</span>}
+                      {k.phone ? (
+                        <div className="flex items-center gap-2">
+                          <span>{k.phone}</span>
+                          {tautanWhatsapp(k.phone) && (
+                            <a
+                              href={tautanWhatsapp(k.phone)!}
+                              target="_blank"
+                              title={`Chat WhatsApp ${k.nama}`}
+                              className="rounded-full bg-green-600 px-2 py-0.5 text-xs font-medium text-white hover:bg-green-700"
+                            >
+                              WA
+                            </a>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
                     </td>
                     <td className="py-3 pr-4 whitespace-nowrap">
                       {k.tanggalLahir ? (

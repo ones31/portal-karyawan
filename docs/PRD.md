@@ -120,7 +120,7 @@ Dokumen ini adalah **sumber konteks utama** untuk project ini. Saat membantu cod
 **User yang memakai:** Karyawan (baca & TTD), Admin/Owner (set masa kontrak)
 
 #### Feature 4 — Pengajuan Izin ✅
-**Deskripsi:** Izin sakit atau izin lain-lain dengan rentang tanggal + alasan. **Izin sakit ada 2 tipe: tanpa surat dokter dan dengan surat dokter (upload PDF/JPG/PNG maks 5 MB).** Aturan: sakit lebih dari 1 hari wajib melampirkan surat dokter. Riwayat izin tampil dengan status (Menunggu/Disetujui/Ditolak).
+**Deskripsi:** Izin sakit atau izin lain-lain dengan rentang tanggal + alasan. **Izin sakit ada 2 tipe: tanpa surat dokter dan dengan surat dokter (upload PDF/JPG/PNG maks 5 MB), keduanya opsional** — validasi wajib surat dokter untuk sakit multi-hari **sudah dihapus** (per permintaan user, 28 Jul 2026). Riwayat izin tampil dengan status (Menunggu/Disetujui/Ditolak).
 **User yang memakai:** Karyawan
 
 #### Feature 5 — Approval Izin ✅
@@ -181,6 +181,20 @@ Dokumen ini adalah **sumber konteks utama** untuk project ini. Saat membantu cod
 Dipakai oleh **OpenClaw** milik user: cron `portal-karyawan-ringkasan` (08:00 WIB harian) mengirim ringkasan ke Telegram, dan user bisa **membalas via Telegram untuk memerintahkan approve/tolak** (agent mengambil id dari ringkasan lalu memanggil endpoint approval; agent dikonfigurasi untuk konfirmasi dulu sebelum eksekusi). Semua panggilan menembak URL **produksi Vercel**. Token ber-scope tunggal: bisa baca ringkasan + approve/tolak izin & tukar libur — TIDAK bisa login, buat/hapus karyawan, atau ubah data lain. Setup OpenClaw (Gateway, cron, channel Telegram, instruksi agent) ada di luar repo ini, di mesin user sendiri.
 **User yang memakai:** Owner/Admin (lewat Telegram dari agent pribadinya)
 
+#### Feature 19 — Admin Ber-Lokasi (Akses Terbatas per Toko) ✅
+**Deskripsi:** Role `ADMIN` sekarang bisa dibatasi ke satu lokasi lewat field baru `User.lokasiAkses` ("Tegal Alur" | "Menceng"). Admin ber-`lokasiAkses` **hanya melihat & mengelola karyawan di lokasinya sendiri** — daftar karyawan, dashboard (statistik, izin terbaru, tabel Tingkat Kehadiran), rekap izin, kontrak segera habis, dan daftar tukar libur semuanya ter-filter otomatis (helper `filterLokasiSesi()` di `lib/auth.ts`, dipakai di setiap query admin). Mengakses/mengedit/menghapus/reset-password karyawan atau approve izin/tukar-libur/perpanjang-kontrak **di luar lokasinya** ditolak dengan 404 "tidak ditemukan" (helper `bolehAksesLokasi()`, tidak membocorkan bahwa datanya ada tapi di luar akses). Saat menambah karyawan atau menyetujui pendaftaran baru, admin ber-lokasiAkses **hanya bisa pilih lokasinya sendiri** (403 kalau coba lokasi lain); dropdown Lokasi di UI (Tambah Karyawan, Edit Karyawan, Pendaftaran) otomatis hanya menampilkan opsi itu.
+
+**Owner (`SUPER_ADMIN`) tidak dibatasi** — tetap melihat & mengelola kedua lokasi seperti sebelumnya. **Pendaftaran Menunggu tidak di-scope** (lokasi belum ditentukan saat itu) — semua tingkat admin bisa melihat & memproses, tapi hanya boleh assign ke lokasi sendiri (owner bebas pilih).
+
+Saat owner membuat akun admin baru (form Tambah Karyawan, role "Admin"), field **Lokasi Akses** wajib diisi. Akun yang sudah ada: **`admin`** di-set ke Menceng, akun baru **`admin2`** (password awal `admin2123`, wajib diganti) dibuat untuk Tegal Alur.
+**User yang memakai:** Owner (kelola akses admin), Admin (kerja ter-scope ke lokasinya)
+
+#### Feature 20 — Admin/Owner Bisa Memasukkan Izin Atas Nama Karyawan ✅
+**Deskripsi:** Di halaman **Edit Karyawan**, tombol **"+ Ajukan Izin untuk Karyawan Ini"** (di kartu "Riwayat Izin & Surat Dokter") membuka form yang sama persis dengan form Ajukan Izin karyawan (Jenis Pengajuan Sakit/Lain-lain/Menikah/Tugas Negara, upload surat dokter, dst.) — solusi untuk **karyawan yang terkendala membuka portal sendiri** (HP rusak, tidak ada sinyal, dll.). Endpoint `POST /api/admin/karyawan/[id]/izin`, tunduk pada aturan validasi yang identik dengan pengajuan mandiri (surat dokter wajib untuk sakit >1 hari, batas 7 hari izin menikah, dst. — logika dipusatkan di `lib/pengajuan-izin.ts`, `buatIzin()`, dipakai bersama `app/api/izin`). Pengajuan yang dimasukkan admin **tetap berstatus MENUNGGU** seperti biasa (tidak otomatis disetujui) — tetap harus diproses lewat approval seperti pengajuan lainnya. Ikut tunduk pada Feature 19: admin ber-lokasiAkses hanya bisa memasukkan izin untuk karyawan di lokasinya sendiri (404 kalau lintas lokasi); owner bebas untuk semua karyawan.
+
+*(Tukar Libur belum termasuk fitur ini — bisa ditambahkan dengan pola yang sama kalau dibutuhkan.)*
+**User yang memakai:** Admin, Owner
+
 #### Feature 17 — Ranking Persentase Kehadiran per Lokasi di Dashboard ✅
 **Deskripsi:** Dashboard admin/owner menampilkan dua tabel **"Tingkat Kehadiran"** terpisah per lokasi (Tegal Alur & Menceng), berisi semua karyawan aktif dengan lokasi terisi, diurutkan **dari persentase kehadiran terendah ke tertinggi**. Memakai formula & periode yang sama dengan Feature 14 (periode berjalan 26–25, izin DITOLAK tidak mengurangi), dipusatkan di `lib/kehadiran.ts` (`hitungPersenKehadiran`, `warnaKehadiran`) supaya beranda karyawan & dashboard admin memakai satu sumber logika yang sama. Query di `app/api/admin/dashboard/route.ts` menghindari N+1 dengan satu `findMany` izin dikelompokkan per user di JS.
 **User yang memakai:** Admin, Owner
@@ -212,6 +226,7 @@ Dipakai oleh **OpenClaw** milik user: cron `portal-karyawan-ringkasan` (08:00 WI
 | role | dropdown: `admin` dan `karyawan` (pilihan `admin` hanya muncul untuk owner) |
 | statusAkun | `MENUNGGU` / `AKTIF` / `DITOLAK`, default `AKTIF`. Pendaftaran mandiri mulai `MENUNGGU` sampai admin approve (Feature 16); `DITOLAK` memblokir login |
 | lokasi | dropdown: `Tegal Alur` dan `Menceng` (wajib untuk karyawan) |
+| lokasiAkses | untuk role `ADMIN`: lokasi yang boleh dilihat/dikelola (Feature 19). Wajib diisi saat owner membuat akun admin. `null`/`SUPER_ADMIN` = tanpa batasan |
 | tanggal_masuk | waktu mulai bekerja di toko (dari spreadsheet "Waktu Masuk") |
 | phone | opsional |
 | email | opsional, tidak dipakai login |
@@ -264,7 +279,7 @@ Dipakai oleh **OpenClaw** milik user: cron `portal-karyawan-ringkasan` (08:00 WI
 | jenis | `SAKIT` / `LAINNYA` |
 | tanggal_mulai, tanggal_akhir | |
 | alasan | |
-| surat_dokter | file upload (PDF/JPG/PNG maks 5 MB); sakit > 1 hari wajib ada. Hanya bisa dibuka pemilik izin dan admin/owner |
+| surat_dokter | file upload (PDF/JPG/PNG maks 5 MB), **opsional** (tidak ada validasi wajib berdasar jumlah hari). Hanya bisa dibuka pemilik izin dan admin/owner |
 | status | `MENUNGGU` / `DISETUJUI` / `DITOLAK` (di-approve admin/owner) |
 
 ---

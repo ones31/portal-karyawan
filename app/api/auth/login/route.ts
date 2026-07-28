@@ -36,6 +36,7 @@ export async function POST(req: Request) {
     userId: user.id,
     nama: user.nama,
     role: user.role,
+    lokasiAkses: user.lokasiAkses,
   });
 
   const res = NextResponse.json({

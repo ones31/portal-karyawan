@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { sesiSaatIni, adalahAdmin, PASSWORD_DEFAULT_KARYAWAN } from "@/lib/auth";
+import { sesiSaatIni, adalahAdmin, bolehAksesLokasi, PASSWORD_DEFAULT_KARYAWAN } from "@/lib/auth";
 
 // Reset password karyawan kembali ke default ("123"), dipakai admin/owner saat
 // karyawan mengubah password sendiri lalu lupa. Hanya untuk akun role KARYAWAN
@@ -19,6 +19,12 @@ export async function POST(
   const { id } = await params;
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user || user.role !== "KARYAWAN") {
+    return NextResponse.json(
+      { error: "Karyawan tidak ditemukan" },
+      { status: 404 }
+    );
+  }
+  if (!bolehAksesLokasi(sesi, user.lokasi)) {
     return NextResponse.json(
       { error: "Karyawan tidak ditemukan" },
       { status: 404 }

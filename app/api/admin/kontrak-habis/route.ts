@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sesiSaatIni, adalahAdmin } from "@/lib/auth";
+import { sesiSaatIni, adalahAdmin, filterLokasiSesi } from "@/lib/auth";
 import { BATAS_HARI_KONTRAK_HABIS } from "@/lib/kontrak";
 
 // Daftar karyawan yang kontraknya akan segera habis
@@ -18,6 +18,7 @@ export async function GET() {
           Date.now() + BATAS_HARI_KONTRAK_HABIS * 24 * 60 * 60 * 1000
         ),
       },
+      user: filterLokasiSesi(sesi),
     },
     include: {
       user: { select: { id: true, nama: true, lokasi: true, phone: true } },

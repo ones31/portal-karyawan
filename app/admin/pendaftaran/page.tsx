@@ -29,6 +29,12 @@ export default function AdminPendaftaranPage() {
   const [memproses, setMemproses] = useState<string | null>(null);
   const [lokasiPilihan, setLokasiPilihan] = useState<Record<string, string>>({});
   const [error, setError] = useState<Record<string, string>>({});
+  const [superAdmin, setSuperAdmin] = useState(false);
+  const [lokasiAksesAdmin, setLokasiAksesAdmin] = useState<string | null>(null);
+
+  // Admin ber-lokasiAkses hanya boleh assign pendaftaran baru ke lokasinya sendiri
+  const lokasiOpsi =
+    !superAdmin && lokasiAksesAdmin ? [lokasiAksesAdmin] : DAFTAR_LOKASI;
 
   async function muat() {
     const res = await fetch("/api/admin/pendaftaran");
@@ -38,6 +44,12 @@ export default function AdminPendaftaranPage() {
 
   useEffect(() => {
     muat();
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => {
+        setSuperAdmin(d.user?.role === "SUPER_ADMIN");
+        setLokasiAksesAdmin(d.user?.lokasiAkses ?? null);
+      });
   }, []);
 
   async function ubahStatus(id: string, statusAkun: "AKTIF" | "DITOLAK") {
@@ -122,7 +134,7 @@ export default function AdminPendaftaranPage() {
                       className="rounded-lg border border-slate-300 px-2 py-1 text-xs focus:border-blue-500 focus:outline-none"
                     >
                       <option value="">-- Pilih Lokasi --</option>
-                      {DAFTAR_LOKASI.map((l) => (
+                      {lokasiOpsi.map((l) => (
                         <option key={l} value={l}>
                           {l}
                         </option>

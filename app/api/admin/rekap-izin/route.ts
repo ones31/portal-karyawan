@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sesiSaatIni, adalahAdmin } from "@/lib/auth";
+import { sesiSaatIni, adalahAdmin, filterLokasiSesi } from "@/lib/auth";
 import { rentangPeriode } from "@/lib/periode";
 
 // Rekap izin per karyawan: siapa saja yang izin + jumlahnya, sesuai jenis & periode
@@ -19,7 +19,7 @@ export async function GET(req: Request) {
   );
 
   const izin = await prisma.izin.findMany({
-    where: { jenis, tanggalMulai },
+    where: { jenis, tanggalMulai, user: filterLokasiSesi(sesi) },
     include: { user: { select: { id: true, nama: true, lokasi: true } } },
     orderBy: { tanggalMulai: "desc" },
   });

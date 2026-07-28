@@ -25,6 +25,18 @@ export async function PATCH(
       { status: 400 }
     );
   }
+  // Admin ber-lokasiAkses hanya boleh assign karyawan baru ke lokasinya sendiri
+  if (
+    statusAkun === "AKTIF" &&
+    sesi.role === "ADMIN" &&
+    sesi.lokasiAkses &&
+    lokasi !== sesi.lokasiAkses
+  ) {
+    return NextResponse.json(
+      { error: `Anda hanya dapat menyetujui pendaftaran ke lokasi ${sesi.lokasiAkses}` },
+      { status: 403 }
+    );
+  }
 
   const target = await prisma.user.findUnique({
     where: { id },

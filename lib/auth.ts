@@ -9,10 +9,32 @@ export type SessionPayload = {
   userId: string;
   nama: string;
   role: "SUPER_ADMIN" | "ADMIN" | "KARYAWAN";
+  // Untuk role ADMIN: lokasi yang boleh dilihat/dikelola ("Tegal Alur" | "Menceng").
+  // SUPER_ADMIN (owner) tidak dibatasi, field ini diabaikan untuknya.
+  lokasiAkses?: string | null;
 };
 
 export function adalahAdmin(role: SessionPayload["role"]): boolean {
   return role === "ADMIN" || role === "SUPER_ADMIN";
+}
+
+// Partial where Prisma untuk membatasi query karyawan sesuai lokasiAkses admin:
+// - SUPER_ADMIN → {} (tanpa batasan, lihat semua lokasi)
+// - ADMIN dengan lokasiAkses terisi → { lokasi: <lokasiAkses> }
+// - ADMIN TANPA lokasiAkses (seharusnya tidak terjadi) → fail-closed, tidak ada yang cocok
+export function filterLokasiSesi(sesi: SessionPayload): { lokasi?: string } {
+  if (sesi.role === "SUPER_ADMIN") return {};
+  return { lokasi: sesi.lokasiAkses || "__tidak_ada_akses__" };
+}
+
+// Cek apakah sesi admin ini boleh mengakses/mengelola data dengan lokasi tertentu
+// (dipakai untuk detail satu karyawan/izin/tukar-libur, bukan daftar).
+export function bolehAksesLokasi(
+  sesi: SessionPayload,
+  lokasi: string | null
+): boolean {
+  if (sesi.role === "SUPER_ADMIN") return true;
+  return !!sesi.lokasiAkses && sesi.lokasiAkses === lokasi;
 }
 
 // Password default karyawan (dipakai saat impor & saat admin reset password

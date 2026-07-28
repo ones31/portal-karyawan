@@ -42,7 +42,8 @@ model User {
   password  String
   nama      String   @unique
   phone     String?
-  lokasi    String?  // "Tegal Alur" | "Menceng"
+  lokasi    String?  // "Tegal Alur" | "Menceng" — lokasi kerja (karyawan)
+  lokasiAkses String? // "Tegal Alur" | "Menceng" — untuk role ADMIN: lokasi yang boleh dilihat/dikelola. null/SUPER_ADMIN = tanpa batasan.
   tanggalMasuk DateTime? // waktu mulai bekerja di toko
   role      Role     @default(KARYAWAN)
   statusAkun StatusAkun @default(AKTIF)

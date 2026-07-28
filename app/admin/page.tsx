@@ -17,10 +17,11 @@ type Statistik = {
 };
 
 type KaryawanKehadiran = { id: string; nama: string; persen: number };
+// Key lokasi yang ada tergantung scope admin yang login (owner: semua lokasi;
+// admin ber-lokasiAkses: cuma lokasinya sendiri) — lihat app/api/admin/dashboard.
 type Kehadiran = {
   periodeLabel: string;
-  "Tegal Alur": KaryawanKehadiran[];
-  Menceng: KaryawanKehadiran[];
+  [lokasi: string]: string | KaryawanKehadiran[];
 };
 
 type IzinTerbaru = {
@@ -242,46 +243,51 @@ export default function AdminDashboard() {
 
       {kehadiran && (
         <div className="grid gap-4 sm:grid-cols-2">
-          {(["Tegal Alur", "Menceng"] as const).map((lokasi) => (
-            <div key={lokasi} className="rounded-xl bg-white p-6 shadow-sm">
-              <h2 className="font-semibold">
-                Tingkat Kehadiran — {lokasi}
-              </h2>
-              <p className="mt-1 text-xs text-slate-500">
-                Periode berjalan ({kehadiran.periodeLabel}) · terendah dulu
-              </p>
-              {kehadiran[lokasi].length === 0 ? (
-                <p className="mt-3 text-sm text-slate-500">
-                  Belum ada karyawan di lokasi ini.
-                </p>
-              ) : (
-                <div className="mt-3 overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-200 text-slate-500">
-                        <th className="py-2 pr-4">#</th>
-                        <th className="py-2 pr-4">Nama</th>
-                        <th className="py-2">Kehadiran</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {kehadiran[lokasi].map((k, idx) => (
-                        <tr key={k.id} className="border-b border-slate-100">
-                          <td className="py-2 pr-4 text-slate-400">{idx + 1}</td>
-                          <td className="py-2 pr-4 font-medium">{k.nama}</td>
-                          <td
-                            className={`py-2 font-semibold ${warnaKehadiran(k.persen)}`}
-                          >
-                            {k.persen}%
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+          {Object.keys(kehadiran)
+            .filter((k) => k !== "periodeLabel")
+            .map((lokasi) => {
+              const daftarKehadiran = kehadiran[lokasi] as KaryawanKehadiran[];
+              return (
+                <div key={lokasi} className="rounded-xl bg-white p-6 shadow-sm">
+                  <h2 className="font-semibold">
+                    Tingkat Kehadiran — {lokasi}
+                  </h2>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Periode berjalan ({kehadiran.periodeLabel}) · terendah dulu
+                  </p>
+                  {daftarKehadiran.length === 0 ? (
+                    <p className="mt-3 text-sm text-slate-500">
+                      Belum ada karyawan di lokasi ini.
+                    </p>
+                  ) : (
+                    <div className="mt-3 overflow-x-auto">
+                      <table className="w-full text-left text-sm">
+                        <thead>
+                          <tr className="border-b border-slate-200 text-slate-500">
+                            <th className="py-2 pr-4">#</th>
+                            <th className="py-2 pr-4">Nama</th>
+                            <th className="py-2">Kehadiran</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {daftarKehadiran.map((k, idx) => (
+                            <tr key={k.id} className="border-b border-slate-100">
+                              <td className="py-2 pr-4 text-slate-400">{idx + 1}</td>
+                              <td className="py-2 pr-4 font-medium">{k.nama}</td>
+                              <td
+                                className={`py-2 font-semibold ${warnaKehadiran(k.persen)}`}
+                              >
+                                {k.persen}%
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
+              );
+            })}
         </div>
       )}
     </div>

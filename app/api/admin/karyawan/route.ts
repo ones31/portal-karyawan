@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { sesiSaatIni, adalahAdmin } from "@/lib/auth";
+import { sesiSaatIni, adalahAdmin, filterLokasiSesi } from "@/lib/auth";
 import { rentangPeriode } from "@/lib/periode";
 import { ISI_KONTRAK_DEFAULT } from "@/lib/kontrak";
 import { cariUserByNama } from "@/lib/cari-user";
@@ -19,7 +19,8 @@ export async function GET(req: Request) {
   const karyawan = await prisma.user.findMany({
     // Akun yang masih MENUNGGU persetujuan admin belum tampil di sini
     // (lihat /admin/pendaftaran); akun DITOLAK juga disembunyikan.
-    where: { role: "KARYAWAN", statusAkun: "AKTIF" },
+    // Admin ber-lokasiAkses hanya melihat karyawan di lokasinya (owner: semua).
+    where: { role: "KARYAWAN", statusAkun: "AKTIF", ...filterLokasiSesi(sesi) },
     orderBy: { nama: "asc" },
     select: {
       id: true,
@@ -68,7 +69,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Akses ditolak" }, { status: 403 });
   }
 
-  const { nama, email, phone, lokasi, password, role, mulaiKontrak, akhirKontrak } =
+  const { nama, email, phone, lokasi, password, role, mulaiKontrak, akhirKontrak, lokasiAkses } =
     await req.json();
 
   const roleBaru = role === "ADMIN" ? "ADMIN" : "KARYAWAN";
@@ -97,6 +98,19 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
+  // Admin ber-lokasiAkses hanya boleh menambah karyawan di lokasinya sendiri
+  if (roleBaru === "KARYAWAN" && sesi.role === "ADMIN" && sesi.lokasiAkses && lokasi !== sesi.lokasiAkses) {
+    return NextResponse.json(
+      { error: `Anda hanya dapat menambah karyawan di lokasi ${sesi.lokasiAkses}` },
+      { status: 403 }
+    );
+  }
+  if (roleBaru === "ADMIN" && !lokasiValid(lokasiAkses)) {
+    return NextResponse.json(
+      { error: "Lokasi Akses wajib dipilih (Tegal Alur atau Menceng) untuk akun admin" },
+      { status: 400 }
+    );
+  }
 
   const sudahAda = await cariUserByNama(nama);
   if (sudahAda) {
@@ -118,6 +132,7 @@ export async function POST(req: Request) {
       email: email || null,
       phone: phone || null,
       lokasi: lokasiValid(lokasi) ? lokasi : null,
+      lokasiAkses: roleBaru === "ADMIN" ? lokasiAkses : null,
       password: await bcrypt.hash(password, 10),
       role: roleBaru,
       ...(roleBaru === "KARYAWAN"

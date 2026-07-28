@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sesiSaatIni, adalahAdmin } from "@/lib/auth";
+import { sesiSaatIni, adalahAdmin, bolehAksesLokasi } from "@/lib/auth";
 import { tambahBulan } from "@/lib/cari-user";
 import { kontrakSatuTahun } from "@/lib/dokumen-toko";
 import { kirimNotifKeUser } from "@/lib/push";
@@ -18,8 +18,17 @@ export async function POST(
   }
 
   const { id } = await params; // userId karyawan
-  const kontrak = await prisma.kontrak.findUnique({ where: { userId: id } });
+  const kontrak = await prisma.kontrak.findUnique({
+    where: { userId: id },
+    include: { user: { select: { lokasi: true } } },
+  });
   if (!kontrak) {
+    return NextResponse.json(
+      { error: "Karyawan ini belum punya kontrak" },
+      { status: 404 }
+    );
+  }
+  if (!bolehAksesLokasi(sesi, kontrak.user.lokasi)) {
     return NextResponse.json(
       { error: "Karyawan ini belum punya kontrak" },
       { status: 404 }

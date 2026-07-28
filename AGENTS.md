@@ -30,7 +30,9 @@ Server dev: `npm run dev` di port **3000** (user sering membukanya di browser se
 **Konstanta bisnis — SATU tempat, jangan tulis ulang inline:**
 - `lib/auth.ts` — `sesiSaatIni()`, `adalahAdmin(role)`, `buatToken()`
 - `lib/cari-user.ts` — `cariUserByNama()` (case-insensitive, raw SQL `lower()`), `tambahBulan()`
-- `lib/izin.ts` — `JENIS_IZIN`, `LABEL_JENIS_IZIN`, `MAKS_HARI_MENIKAH` (7), `jumlahHari()`
+- `lib/izin.ts` — konstanta MURNI, client-safe: `JENIS_IZIN`, `LABEL_JENIS_IZIN`, `MAKS_HARI_MENIKAH` (7), `jumlahHari()`. JANGAN tambah logika server (prisma/fs) di sini — dipakai komponen client.
+- `lib/pengajuan-izin.ts` — server-only: `buatIzin()` (validasi + simpan + notif), dipakai `app/api/izin` (karyawan) & `app/api/admin/karyawan/[id]/izin` (admin masukkan izin atas nama karyawan)
+- `lib/approval.ts` — `prosesIzin()`, `prosesTukarLibur()` (update status + notif hasil), dipakai rute admin & `app/api/admin/agent-approval`
 - `lib/kontrak.ts` — `ISI_KONTRAK_DEFAULT`, `BATAS_HARI_KONTRAK_HABIS` (30)
 - `lib/masa-kerja.ts` — `statusMasaKerja()`, `BATAS_TAHUN_TETAP` (3)
 - `lib/lokasi.ts` — `DAFTAR_LOKASI` = ["Tegal Alur", "Menceng"], `lokasiValid()`
@@ -43,17 +45,19 @@ Server dev: `npm run dev` di port **3000** (user sering membukanya di browser se
 - Login pakai **nama** (bukan email), **tidak case-sensitive**. Nama unik.
 - Role: `SUPER_ADMIN` (owner; bisa buat akun admin), `ADMIN`, `KARYAWAN`. Cek admin selalu via `adalahAdmin()` — jangan `role === "ADMIN"`.
 - Kontrak otomatis saat TTD onboarding: masa kerja **< 3 bulan** → percobaan 3 bulan dari `tanggalMasuk`; **3 bln–3 thn** → kontrak 1 tahun bergulir dari akhir masa 3 bulan; **> 3 tahun** → karyawan TETAP, kontrak dikosongkan.
-- Izin: `SAKIT` (2 tipe; > 1 hari WAJIB surat dokter, PDF/JPG/PNG ≤ 5 MB), `LAINNYA`, `TUGAS_NEGARA` (1 tanggal, alasan opsional), `MENIKAH` (maks 7 hari). Tukar libur = model terpisah `TukarLibur`, di UI karyawan menyatu di dropdown "Jenis Pengajuan".
+- Izin: `SAKIT` (2 tipe: tanpa/dengan surat dokter, PDF/JPG/PNG ≤ 5 MB — **opsional, tidak ada lagi validasi wajib berdasar jumlah hari**, dihapus per permintaan user), `LAINNYA`, `TUGAS_NEGARA` (1 tanggal, alasan opsional), `MENIKAH` (maks 7 hari). Tukar libur = model terpisah `TukarLibur`, di UI karyawan menyatu di dropdown "Jenis Pengajuan". Catatan: teks resmi peraturan toko (`lib/kontrak.ts`, `ISI_KONTRAK_DEFAULT`) MASIH menyebut aturan lama ("izin sakit >1 hari wajib surat dokter") — belum diubah karena itu dokumen resmi (lihat aturan #12), perlu keputusan user terpisah kalau mau disinkronkan.
 - Surat dokter = dokumen medis: hanya pemilik izin & admin/owner yang boleh membuka (`/api/izin/surat/[nama]`).
 - Notifikasi push: pengajuan baru → admin+owner; hasil approval → karyawan ybs. Pemanggilan notif SELALU `await ...catch(() => {})` — tidak boleh menggagalkan mutasi utamanya.
 - Password karyawan impor = `123` (memang lemah; keputusan user untuk jaringan internal — JANGAN diubah tanpa diminta).
+- Admin ber-lokasi (Feature 19): `ADMIN` bisa dibatasi ke satu lokasi via `User.lokasiAkses`. Query karyawan/izin/tukar-libur/kontrak untuk admin WAJIB lewat `filterLokasiSesi(sesi)` (list) atau `bolehAksesLokasi(sesi, lokasi)` (satu record) dari `lib/auth.ts` — jangan query langsung tanpa itu. `SUPER_ADMIN` (owner) tidak dibatasi.
 
 **Akun untuk pengujian (hafalkan):**
 
 | Role | Nama login | Password |
 |---|---|---|
 | Owner | seno / dian | seno123 / dian123 |
-| Admin | admin | admin123 |
+| Admin (lokasiAkses: Menceng) | admin | admin123 |
+| Admin (lokasiAkses: Tegal Alur) | admin2 | admin2123 |
 | Karyawan lengkap (ada kontrak + TTD) | Budi Santoso | karyawan123 |
 | Karyawan impor (±45 orang) | Haryanto, Sunarto, dll. | 123 |
 
@@ -74,6 +78,7 @@ Server dev: `npm run dev` di port **3000** (user sering membukanya di browser se
 13. **Raw SQL (`$queryRaw`) dengan identifier tanpa kutip.** Kejadian nyata: `FROM User` (tanpa kutip) di SQLite jalan, tapi di PostgreSQL Postgres men-lowercase-kan jadi `user` dan error "column does not exist". → *Aturan: hindari raw SQL kalau bisa (pakai fitur Prisma native, mis. `mode: "insensitive"`); kalau terpaksa raw SQL, kutip identifier dengan `"NamaTabel"`.*
 14. **Mengasumsikan `vercel deploy` menghormati `.gitignore`.** Kejadian nyata: `.env` (password DB + kunci privat) ikut ter-upload ke deployment karena tidak ada `.vercelignore` eksplisit — `.gitignore` TIDAK otomatis dipakai untuk `vercel deploy` CLI (beda dari git push). → *Aturan: proyek yang di-deploy ke Vercel WAJIB punya `.vercelignore` sendiri; setelah deploy pertama, selalu verifikasi lewat `GET /v6/deployments/{id}/files` bahwa tidak ada `.env`/secret yang ikut.*
 15. **Commit git dengan email placeholder/asal.** Kejadian nyata: `git config user.email "seno@tokomarmo.local"` (dikarang, bukan email asli user) membuat Vercel memblokir deploy dengan `TEAM_ACCESS_REQUIRED` karena tidak bisa memverifikasi commit author = pemilik akun. → *Aturan: `git config user.email`/`user.name` proyek yang akan di-deploy harus pakai identitas ASLI user (email yang terverifikasi di platform deploy-nya), bukan nilai sembarang.*
+16. **Menambah fungsi server (prisma/fs) ke file `lib/*.ts` yang isinya sudah dipakai komponen client.** Kejadian nyata: `buatIzin()` (pakai `fs/promises` lewat `lib/surat-dokter.ts`) ditambahkan ke `lib/izin.ts` yang juga diimpor `app/karyawan/izin/page.tsx` (client) → build error "Module not found: fs/promises". → *Aturan: sebelum menambah logika ke `lib/*.ts`, cek dulu `grep -rl "from \"@/lib/<nama>\"" app/` — kalau ada komponen `"use client"` yang mengimpornya, taruh logika server di file BARU terpisah (pola: `lib/izin.ts` konstanta murni vs `lib/pengajuan-izin.ts` server-only).*
 
 ## 4. Standar kualitas per jenis deliverable (kriteria bisa dicek, bukan kata sifat)
 

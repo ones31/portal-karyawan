@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { unlink } from "fs/promises";
 import path from "path";
 import { prisma } from "@/lib/prisma";
-import { sesiSaatIni, adalahAdmin } from "@/lib/auth";
+import { sesiSaatIni, adalahAdmin, bolehAksesLokasi } from "@/lib/auth";
 import { lokasiValid } from "@/lib/lokasi";
 import { ISI_KONTRAK_DEFAULT } from "@/lib/kontrak";
 import { cariUserByNama } from "@/lib/cari-user";
@@ -42,6 +42,12 @@ export async function GET(
       { status: 404 }
     );
   }
+  if (!bolehAksesLokasi(sesi, karyawan.lokasi)) {
+    return NextResponse.json(
+      { error: "Karyawan tidak ditemukan" },
+      { status: 404 }
+    );
+  }
   return NextResponse.json({ karyawan });
 }
 
@@ -58,6 +64,12 @@ export async function PATCH(
   const { id } = await params;
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user || user.role !== "KARYAWAN") {
+    return NextResponse.json(
+      { error: "Karyawan tidak ditemukan" },
+      { status: 404 }
+    );
+  }
+  if (!bolehAksesLokasi(sesi, user.lokasi)) {
     return NextResponse.json(
       { error: "Karyawan tidak ditemukan" },
       { status: 404 }
@@ -96,6 +108,17 @@ export async function PATCH(
   }
   if (lokasi && !lokasiValid(lokasi)) {
     return NextResponse.json({ error: "Lokasi tidak valid" }, { status: 400 });
+  }
+  if (
+    lokasi &&
+    sesi.role === "ADMIN" &&
+    sesi.lokasiAkses &&
+    lokasi !== sesi.lokasiAkses
+  ) {
+    return NextResponse.json(
+      { error: `Anda hanya dapat memindahkan karyawan ke lokasi ${sesi.lokasiAkses}` },
+      { status: 403 }
+    );
   }
   if (passwordBaru && String(passwordBaru).length < 6) {
     return NextResponse.json(
@@ -192,6 +215,12 @@ export async function DELETE(
     include: { izin: { where: { suratDokter: { not: null } } } },
   });
   if (!user || user.role !== "KARYAWAN") {
+    return NextResponse.json(
+      { error: "Karyawan tidak ditemukan" },
+      { status: 404 }
+    );
+  }
+  if (!bolehAksesLokasi(sesi, user.lokasi)) {
     return NextResponse.json(
       { error: "Karyawan tidak ditemukan" },
       { status: 404 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sesiSaatIni, adalahAdmin } from "@/lib/auth";
+import { sesiSaatIni, adalahAdmin, filterLokasiSesi } from "@/lib/auth";
 import { rentangPeriode, periodeBerjalan } from "@/lib/periode";
 import { BATAS_HARI_KONTRAK_HABIS } from "@/lib/kontrak";
 import { DAFTAR_LOKASI } from "@/lib/lokasi";
@@ -14,6 +14,8 @@ export async function GET(req: Request) {
 
   const periode = new URL(req.url).searchParams.get("periode");
   const tanggalMulai = rentangPeriode(periode);
+  // Admin ber-lokasiAkses hanya melihat statistik lokasinya; owner (SUPER_ADMIN) semua.
+  const lokasiScope = filterLokasiSesi(sesi);
 
   const [
     totalKaryawan,
@@ -24,11 +26,11 @@ export async function GET(req: Request) {
     kontrakSegeraHabis,
     pendaftaranMenunggu,
   ] = await Promise.all([
-      prisma.user.count({ where: { role: "KARYAWAN", statusAkun: "AKTIF" } }),
-      prisma.izin.count({ where: { jenis: "SAKIT", tanggalMulai } }),
-      prisma.izin.count({ where: { jenis: "LAINNYA", tanggalMulai } }),
-      prisma.izin.count({ where: { status: "MENUNGGU" } }),
-      prisma.tukarLibur.count({ where: { status: "MENUNGGU" } }),
+      prisma.user.count({ where: { role: "KARYAWAN", statusAkun: "AKTIF", ...lokasiScope } }),
+      prisma.izin.count({ where: { jenis: "SAKIT", tanggalMulai, user: lokasiScope } }),
+      prisma.izin.count({ where: { jenis: "LAINNYA", tanggalMulai, user: lokasiScope } }),
+      prisma.izin.count({ where: { status: "MENUNGGU", user: lokasiScope } }),
+      prisma.tukarLibur.count({ where: { status: "MENUNGGU", user: lokasiScope } }),
       prisma.kontrak.count({
         where: {
           akhirKontrak: {
@@ -37,12 +39,17 @@ export async function GET(req: Request) {
               Date.now() + BATAS_HARI_KONTRAK_HABIS * 24 * 60 * 60 * 1000
             ),
           },
+          user: lokasiScope,
         },
       }),
+      // Pendaftaran menunggu belum punya lokasi (baru ditentukan saat approve),
+      // jadi TIDAK di-scope — semua tingkat admin melihat & bisa memproses,
+      // tapi hanya boleh assign ke lokasinya sendiri (lihat app/api/admin/pendaftaran/[id]).
       prisma.user.count({ where: { role: "KARYAWAN", statusAkun: "MENUNGGU" } }),
     ]);
 
   const izinTerbaru = await prisma.izin.findMany({
+    where: { user: lokasiScope },
     orderBy: { createdAt: "desc" },
     take: 10,
     include: { user: { select: { nama: true } } },
@@ -50,8 +57,15 @@ export async function GET(req: Request) {
 
   // Persentase kehadiran periode berjalan (siklus gajian 26–25) untuk semua
   // karyawan aktif yang lokasinya sudah diatur, dipisah per lokasi.
+  // Admin ber-lokasiAkses hanya mendapat tabel lokasinya sendiri.
+  const lokasiUntukKehadiran =
+    sesi.role === "SUPER_ADMIN"
+      ? [...DAFTAR_LOKASI]
+      : sesi.lokasiAkses
+        ? [sesi.lokasiAkses]
+        : [];
   const periodeKehadiran = periodeBerjalan();
-  const lokasiFilter = { role: "KARYAWAN" as const, statusAkun: "AKTIF" as const, lokasi: { in: [...DAFTAR_LOKASI] } };
+  const lokasiFilter = { role: "KARYAWAN" as const, statusAkun: "AKTIF" as const, lokasi: { in: lokasiUntukKehadiran } };
   const [karyawanKehadiran, izinKehadiran] = await Promise.all([
     prisma.user.findMany({
       where: lokasiFilter,
@@ -84,15 +98,13 @@ export async function GET(req: Request) {
     }))
     .sort((a, b) => a.persen - b.persen); // terendah dulu
 
-  const kehadiran = {
+  // Hanya lokasi yang boleh dilihat sesi ini yang jadi key di response —
+  // frontend merender apa pun key lokasi yang ada di objek ini (lihat app/admin/page.tsx).
+  const kehadiran: { periodeLabel: string; [lokasi: string]: string | typeof kehadiranSemua } = {
     periodeLabel: periodeKehadiran.label,
     ...Object.fromEntries(
-      DAFTAR_LOKASI.map((l) => [l, kehadiranSemua.filter((k) => k.lokasi === l)])
+      lokasiUntukKehadiran.map((l) => [l, kehadiranSemua.filter((k) => k.lokasi === l)])
     ),
-  } as {
-    periodeLabel: string;
-    "Tegal Alur": typeof kehadiranSemua;
-    Menceng: typeof kehadiranSemua;
   };
 
   return NextResponse.json({

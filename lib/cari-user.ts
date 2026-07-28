@@ -7,6 +7,7 @@ type UserRow = {
   password: string;
   role: "SUPER_ADMIN" | "ADMIN" | "KARYAWAN";
   statusAkun: "MENUNGGU" | "AKTIF" | "DITOLAK";
+  lokasiAkses: string | null;
 };
 
 // Cari user berdasarkan nama TANPA membedakan huruf besar/kecil
@@ -21,6 +22,7 @@ export async function cariUserByNama(nama: string): Promise<UserRow | null> {
       password: true,
       role: true,
       statusAkun: true,
+      lokasiAkses: true,
     },
   });
 }

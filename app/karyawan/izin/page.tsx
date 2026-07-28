@@ -305,10 +305,6 @@ export default function IzinPage() {
                       )}
                     </div>
                   )}
-                  <p className="mt-2 text-xs text-slate-500">
-                    Sesuai tata tertib, izin sakit lebih dari 1 hari wajib
-                    melampirkan surat dokter.
-                  </p>
                   {tipeSakit === "TANPA" && (
                     <p className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
                       ⚠️ Sering izin tanpa surat dokter dapat mengurangi
