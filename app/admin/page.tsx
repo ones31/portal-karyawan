@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { BATAS_HARI_KONTRAK_HABIS } from "@/lib/kontrak";
 import { LABEL_JENIS_IZIN } from "@/lib/izin";
 import { warnaKehadiran } from "@/lib/kehadiran";
 
@@ -107,7 +106,7 @@ export default function AdminDashboard() {
       href: "/admin/tukar-libur",
     },
     {
-      label: `Kontrak Habis < ${BATAS_HARI_KONTRAK_HABIS} Hari`,
+      label: "Kontrak Perlu Diperpanjang",
       nilai: stat.kontrakSegeraHabis,
       warna: "text-orange-600",
       href: "/admin/kontrak-habis",

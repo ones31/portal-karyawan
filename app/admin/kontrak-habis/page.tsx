@@ -68,8 +68,12 @@ export default function KontrakHabisPage() {
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold">
-        Kontrak Segera Habis (&lt; {BATAS_HARI_KONTRAK_HABIS} Hari)
+        Kontrak Segera Habis / Sudah Lewat
       </h1>
+      <p className="-mt-3 text-sm text-slate-500">
+        Kontrak yang habis dalam {BATAS_HARI_KONTRAK_HABIS} hari ke depan,
+        termasuk yang sudah lewat masa berlakunya dan belum diperpanjang.
+      </p>
 
       {pesan && (
         <p className="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">
@@ -82,8 +86,7 @@ export default function KontrakHabisPage() {
       ) : daftar.length === 0 ? (
         <div className="rounded-xl bg-white p-6 shadow-sm">
           <p className="text-sm text-slate-500">
-            Tidak ada kontrak yang habis dalam {BATAS_HARI_KONTRAK_HABIS} hari
-            ke depan.
+            Tidak ada kontrak yang perlu diperpanjang saat ini.
           </p>
         </div>
       ) : (
@@ -121,12 +124,14 @@ export default function KontrakHabisPage() {
                     <td className="py-3 pr-4">
                       <span
                         className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                          sisa <= 14
+                          sisa < 0
                             ? "bg-red-100 text-red-700"
-                            : "bg-orange-100 text-orange-700"
+                            : sisa <= 14
+                              ? "bg-red-100 text-red-700"
+                              : "bg-orange-100 text-orange-700"
                         }`}
                       >
-                        {sisa} hari
+                        {sisa < 0 ? `Habis ${-sisa} hari lalu` : `${sisa} hari`}
                       </span>
                     </td>
                     <td className="py-3">

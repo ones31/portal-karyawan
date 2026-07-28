@@ -18,6 +18,7 @@ export default async function AdminLayout({
         links={[
           { href: "/admin", label: "Dashboard" },
           { href: "/admin/karyawan", label: "Daftar Karyawan" },
+          { href: "/admin/ajukan-izin", label: "Ajukan Izin" },
           { href: "/admin/ganti-password", label: "Ganti Password" },
         ]}
       />

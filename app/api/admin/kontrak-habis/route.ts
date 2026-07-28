@@ -2,23 +2,30 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sesiSaatIni, adalahAdmin, filterLokasiSesi } from "@/lib/auth";
 import { BATAS_HARI_KONTRAK_HABIS } from "@/lib/kontrak";
+import { BATAS_TAHUN_TETAP } from "@/lib/masa-kerja";
 
-// Daftar karyawan yang kontraknya akan segera habis
+// Daftar karyawan yang kontraknya akan segera habis ATAU SUDAH LEWAT
+// (sengaja tanpa batas bawah tanggal — kontrak yang sudah lewat tetap harus
+// bisa diperpanjang, bukan hilang dari daftar). Karyawan yang sudah jadi
+// Tetap (masa kerja > BATAS_TAHUN_TETAP) dikecualikan supaya kontrak basi
+// yang belum sempat dibersihkan tidak nyangkut selamanya di sini.
 export async function GET() {
   const sesi = await sesiSaatIni();
   if (!sesi || !adalahAdmin(sesi.role)) {
     return NextResponse.json({ error: "Akses ditolak" }, { status: 403 });
   }
 
+  const batasTetap = new Date();
+  batasTetap.setFullYear(batasTetap.getFullYear() - BATAS_TAHUN_TETAP);
+
   const kontrak = await prisma.kontrak.findMany({
     where: {
       akhirKontrak: {
-        gte: new Date(),
         lte: new Date(
           Date.now() + BATAS_HARI_KONTRAK_HABIS * 24 * 60 * 60 * 1000
         ),
       },
-      user: filterLokasiSesi(sesi),
+      user: { ...filterLokasiSesi(sesi), tanggalMasuk: { gt: batasTetap } },
     },
     include: {
       user: { select: { id: true, nama: true, lokasi: true, phone: true } },
