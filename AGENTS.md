@@ -87,6 +87,7 @@ Server dev: `npm run dev` di port **3000** (user sering membukanya di browser se
 - [ ] Diverifikasi end-to-end (bukan "harusnya jalan"): API via `curl` dengan kode status ditulis di ringkasan, UI via screenshot browser
 - [ ] Data uji dibersihkan
 - [ ] `docs/PRD.md` diupdate (Feature baru atau revisi feature terkait)
+- [ ] `docs/RINGKASAN-SESI.md` diupdate: naikkan **Versi** +1 di judul, tambah baris baru di tabel "Riwayat Versi"
 - [ ] Ringkasan bahasa Indonesia menyebut: apa yang berubah, apa yang diuji + hasil nyatanya, dan instruksi user ("refresh browser")
 
 **API route baru:**
@@ -133,5 +134,5 @@ Format bertanya: satu pertanyaan spesifik + rekomendasimu + konsekuensi tiap pil
 4. `npx prisma migrate dev --name <x>` bila schema berubah → **restart server**
 5. Verifikasi (skill `verifikasi-portal`) — API negatif+positif, UI, screenshot
 6. Bersihkan data uji
-7. Update `docs/PRD.md`
+7. Update `docs/PRD.md` dan `docs/RINGKASAN-SESI.md` (naikkan Versi +1 + baris baru di Riwayat Versi)
 8. Ringkasan Indonesia: perubahan, bukti pengujian, catatan/opsi lanjutan

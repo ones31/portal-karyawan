@@ -1,5 +1,7 @@
 # Ringkasan Sesi — Portal Toko Marmo
 
+**Versi: v1** — diperbarui 2026-07-30
+
 > Ditulis untuk melanjutkan pekerjaan di sesi Claude Code baru. Baca ini + `docs/PRD.md` (kebenaran tunggal fitur, sekarang sampai **Feature 20**) + `AGENTS.md` (manual operasi & aturan kerja, sekarang 16 kesalahan umum) sebelum lanjut.
 
 ## Status saat ini
@@ -85,3 +87,11 @@ Kalau schema Prisma berubah: `npx prisma migrate dev --name <nama>` lalu **resta
 - User sering minta **beberapa perubahan kecil berurutan** lalu bilang "gabung aja, nanti deploy sekalian" — artinya: kerjakan & verifikasi tiap perubahan, TAPI tahan commit/deploy sampai diminta eksplisit. Jangan asumsikan harus deploy tiap selesai satu fitur.
 - Selalu diverifikasi end-to-end (curl + browser) sebelum lapor selesai, data uji (prefix `Uji `) selalu dibersihkan sesudahnya — ini pola yang sudah established, ikuti terus.
 - Kalau ada bug/gap yang ditemukan saat mengerjakan tugas lain (bukan yang diminta), boleh langsung diperbaiki dalam scope yang sama asal jelas dilaporkan — user menghargai ini (lihat perbaikan bug kontrak & label izin di sesi ini).
+
+## Riwayat Versi
+
+Setiap kali file ini diperbarui: naikkan **Versi** di judul +1, lalu tambah satu baris di tabel bawah (baris terbaru paling atas).
+
+| Versi | Tanggal | Ringkasan perubahan |
+|---|---|---|
+| v1 | 2026-07-30 | Baseline mulai pakai penomoran versi. Isi saat ini: Feature 18–20 (OpenClaw, admin ber-lokasi, ajukan izin admin) + perbaikan bug kontrak lewat tanggal. |
