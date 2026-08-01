@@ -1,8 +1,8 @@
 # Ringkasan Sesi — Portal Toko Marmo
 
-**Versi: v1** — diperbarui 2026-07-30
+**Versi: v2** — diperbarui 2026-08-01
 
-> Ditulis untuk melanjutkan pekerjaan di sesi Claude Code baru. Baca ini + `docs/PRD.md` (kebenaran tunggal fitur, sekarang sampai **Feature 20**) + `AGENTS.md` (manual operasi & aturan kerja, sekarang 16 kesalahan umum) sebelum lanjut.
+> Ditulis untuk melanjutkan pekerjaan di sesi Claude Code baru. Baca ini + `docs/PRD.md` (kebenaran tunggal fitur, sekarang sampai **Feature 22**) + `AGENTS.md` (manual operasi & aturan kerja, sekarang 17 kesalahan umum) sebelum lanjut.
 
 ## Status saat ini
 
@@ -10,7 +10,26 @@
 
 **Deploy terakhir:** commit `55823bd` ("menu Ajukan Izin admin + perbaiki kontrak lewat tanggal hilang dari daftar") — status READY, diverifikasi via curl.
 
-## Fitur yang ditambahkan di sesi ini (Feature 18–20 di PRD)
+⚠️ **Feature 21 & 22 (di bawah) BELUM di-deploy** — sudah selesai & diverifikasi lokal, tapi produksi masih di `55823bd`. Ingat: schema `Catatan` sudah ter-migrate ke Neon yang **dipakai bersama produksi**, jadi tabelnya sudah ada di produksi walau kodenya belum.
+
+## Fitur terbaru (Feature 21–22 di PRD) — sesi 1 Agu 2026
+
+### Feature 21 — Catatan/pesan khusus admin → karyawan
+Menu **"Catatan"** di navbar admin (`/admin/catatan`) & karyawan (`/karyawan/catatan`).
+- Dropdown "Kirim ke": **satu karyawan**, **semua karyawan**, atau **semua di satu lokasi** (`lib/catatan.ts` konstanta client-safe, `lib/kirim-catatan.ts` server-only)
+- Karyawan: catatan belum dibaca tampil sebagai **banner kuning paling atas di beranda** + tombol "Tandai sudah dibaca"; riwayat lengkap di menu Catatan
+- **Push notification** dikirim ke tiap penerima saat catatan dibuat
+- Kiriman massal = satu baris per penerima dengan `batchId` sama → admin lihat **read receipt per orang** ("12/45 sudah membaca" + tabel rinci) dan bisa **tarik kembali satu kiriman sekaligus** (`DELETE /api/admin/catatan/[batchId]`)
+- Ter-scope lokasi (Feature 19): admin ber-lokasiAkses tidak bisa kirim/tarik lintas lokasi
+
+### Feature 22 — Export rekap izin ke Excel (.xlsx)
+Panel **"Export ke Excel"** di `/admin/rekap-izin`, pakai `exceljs` (**dependency baru**, `lib/export-izin.ts`).
+- Input **Dari/Sampai wajib** — endpoint balas 400 kalau kosong atau `sampai < dari`
+- Rentang tanggal **tercetak di dalam file** ("Periode: 1 Juli 2026 s/d 31 Juli 2026") **dan di nama file** (`Rekap-Izin-Sakit_2026-07-01_sd_2026-07-31.xlsx`)
+- 2 sheet: "Rekap Izin" (rinci, header dibekukan) + "Per Karyawan" (jumlah izin & total hari)
+- **Filter jenis di halaman rekap diperluas** dari Sakit/Lain-lain saja → **Semua Jenis + 4 jenis izin**; dashboard "Pengajuan Izin Terbaru" kini menautkan ke sini ("Lihat semua & export Excel →")
+
+## Fitur sesi sebelumnya (Feature 18–20 di PRD)
 
 ### Feature 18 — Ringkasan & approval jarak jauh via OpenClaw
 User punya OpenClaw (personal AI agent, self-hosted di Mac ini, terhubung Telegram). Dibuat:
@@ -45,14 +64,17 @@ Solusi untuk karyawan yang terkendala membuka portal sendiri. Dua jalur, endpoin
 | Owner | seno / dian | seno123 / dian123 | Tidak dibatasi lokasi |
 | Admin | admin | admin123 | lokasiAkses: **Menceng** |
 | Admin | admin2 | admin2123 | lokasiAkses: **Tegal Alur** (baru, sarankan ganti password) |
-| Karyawan lengkap | Budi Santoso | karyawan123 | Ada kontrak + TTD |
-| Karyawan impor (±45 orang) | (nama masing-masing) | 123 | |
+| Karyawan impor (±49 orang) | Akmal, Andrew, Haryanto, dll. | 123 | |
 
 Login **tidak case-sensitive**.
 
-## Kesalahan baru yang ditemukan & dicatat di AGENTS.md (kesalahan #16)
+⚠️ **Budi Santoso / Siti / Ani / Rudi sudah TIDAK ada** di database (dicek 1 Agu 2026, login balas 401) — catatan lama yang menyebut akun ini sudah usang. Kalau butuh karyawan uji, buat sendiri berawalan `Uji ` lalu hapus.
 
-**Jangan tambah logika server (prisma/fs) ke file `lib/*.ts` yang isinya sudah dipakai komponen client.** Kejadian nyata sesi ini: `buatIzin()` (pakai `fs/promises`) sempat ditambahkan ke `lib/izin.ts` yang juga diimpor `app/karyawan/izin/page.tsx` (client) → build error "Module not found: fs/promises". Sudah dipisah: `lib/izin.ts` (konstanta murni, client-safe) vs `lib/pengajuan-izin.ts` (server-only). **Sebelum menambah logika ke `lib/*.ts`, cek dulu:** `grep -rl "from \"@/lib/<nama>\"" app/` — kalau ada file `"use client"` yang mengimpornya, taruh logika server di file baru.
+## Kesalahan baru yang dicatat di AGENTS.md (kesalahan #17)
+
+**Jangan langsung salahkan kode kalau state komponen client tidak pernah terisi padahal API-nya 200.** Kejadian nyata sesi ini: sesudah `npm install exceljs`, dropdown karyawan kosong terus & daftar mentok "Memuat...". Penyebabnya Turbopack panic `Failed to write app endpoint … Next.js package not found` → Fast Refresh rebuild berulang → React remount sebelum `fetch` selesai. **Cek `preview_logs` + console (`[Fast Refresh] rebuilding` berulang) dulu**; perbaikannya di lingkungan: `pkill -f "next dev"; rm -rf .next; npm install` lalu nyalakan ulang.
+
+(Kesalahan #16 sesi sebelumnya: jangan tambah logika server (prisma/fs) ke `lib/*.ts` yang diimpor komponen client — pola pemisahan itu diikuti lagi di sesi ini: `lib/catatan.ts` vs `lib/kirim-catatan.ts`.)
 
 ## Alat & kredensial yang tersedia di Mac ini
 
@@ -70,7 +92,7 @@ User sempat tanya cara kerja dari MacBook saat di luar rumah (Mac mini ini yang 
 ## Cara menjalankan
 
 ```bash
-cd /Users/seno/portal-karyawan
+cd /Users/seno/projects/portal-karyawan
 npm run dev   # http://localhost:3000
 ```
 
@@ -78,8 +100,8 @@ Kalau schema Prisma berubah: `npx prisma migrate dev --name <nama>` lalu **resta
 
 ## Dokumen rujukan di repo
 
-- **`docs/PRD.md`** — 20 fitur ✅, data model (termasuk `lokasiAkses`), fase project. **Selalu update setiap fitur baru.**
-- **`AGENTS.md`** — manual operasi: stack terkunci, konstanta bisnis per file `lib/`, **16 kesalahan umum** + aturan penangkalnya, kapan harus berhenti & bertanya.
+- **`docs/PRD.md`** — 22 fitur ✅, data model (termasuk `lokasiAkses` & entity `Catatan`), fase project. **Selalu update setiap fitur baru.**
+- **`AGENTS.md`** — manual operasi: stack terkunci, konstanta bisnis per file `lib/`, **17 kesalahan umum** + aturan penangkalnya, kapan harus berhenti & bertanya.
 - **`.claude/skills/`** — `verifikasi-portal`, `tambah-fitur-portal`, `impor-karyawan`.
 
 ## Pola kerja yang disukai user (penting untuk sesi baru)
@@ -94,4 +116,5 @@ Setiap kali file ini diperbarui: naikkan **Versi** di judul +1, lalu tambah satu
 
 | Versi | Tanggal | Ringkasan perubahan |
 |---|---|---|
+| v2 | 2026-08-01 | **Feature 21** (catatan/pesan admin→karyawan, banner beranda + push notif + read receipt + tarik kembali) & **Feature 22** (export rekap izin ke .xlsx dengan rentang tanggal wajib; filter jenis diperluas ke semua jenis izin). Dependency baru `exceljs`. Kesalahan #17 dicatat di AGENTS.md. Akun contoh Budi Santoso dkk. dikonfirmasi sudah tidak ada di DB. Path repo di dokumen dibetulkan ke `~/projects/portal-karyawan`. |
 | v1 | 2026-07-30 | Baseline mulai pakai penomoran versi. Isi saat ini: Feature 18–20 (OpenClaw, admin ber-lokasi, ajukan izin admin) + perbaikan bug kontrak lewat tanggal. |

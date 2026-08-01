@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { JENIS_IZIN, LABEL_JENIS_IZIN, type JenisIzin } from "@/lib/izin";
 
 type RekapKaryawan = {
   userId: string;
@@ -9,6 +10,7 @@ type RekapKaryawan = {
   lokasi: string | null;
   jumlah: number;
   izin: {
+    jenis: JenisIzin;
     tanggalMulai: string;
     tanggalAkhir: string;
     alasan: string;
@@ -22,6 +24,13 @@ const PERIODE_LABEL: Record<string, string> = {
   tahun: "Tahun Ini",
   semua: "Semua",
   custom: "Custom",
+};
+
+// Pilihan filter jenis: semua jenis izin + opsi gabungan "SEMUA"
+const JENIS_FILTER = ["SEMUA", ...JENIS_IZIN] as const;
+const LABEL_JENIS_FILTER: Record<string, string> = {
+  SEMUA: "Semua Jenis",
+  ...LABEL_JENIS_IZIN,
 };
 
 const STATUS_STYLE: Record<string, string> = {
@@ -38,15 +47,47 @@ function formatTanggal(s: string) {
   });
 }
 
+// yyyy-mm-dd untuk <input type="date"> (pakai waktu lokal, bukan UTC)
+function isoTanggal(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
+}
+
 function IsiRekapIzin() {
   const router = useRouter();
   const params = useSearchParams();
-  const jenis = params.get("jenis") === "LAINNYA" ? "LAINNYA" : "SAKIT";
+  const jenisParam = params.get("jenis") ?? "SEMUA";
+  const jenis = (JENIS_FILTER as readonly string[]).includes(jenisParam)
+    ? jenisParam
+    : "SEMUA";
   const periode = params.get("periode") ?? "bulan";
   const dari = params.get("dari") ?? "";
   const sampai = params.get("sampai") ?? "";
 
   const [rekap, setRekap] = useState<RekapKaryawan[] | null>(null);
+
+  // Rentang tanggal khusus untuk export — default bulan berjalan, bisa diubah
+  // bebas tanpa mengubah filter tampilan di atasnya.
+  const [exportDari, setExportDari] = useState("");
+  const [exportSampai, setExportSampai] = useState("");
+  const [errorExport, setErrorExport] = useState("");
+
+  useEffect(() => {
+    const kini = new Date();
+    setExportDari(isoTanggal(new Date(kini.getFullYear(), kini.getMonth(), 1)));
+    setExportSampai(
+      isoTanggal(new Date(kini.getFullYear(), kini.getMonth() + 1, 0))
+    );
+  }, []);
+
+  // Kalau filter tampilan pakai periode custom, samakan rentang export dengannya
+  useEffect(() => {
+    if (periode === "custom" && dari && sampai) {
+      setExportDari(dari);
+      setExportSampai(sampai);
+    }
+  }, [periode, dari, sampai]);
 
   // Untuk periode custom, tunggu dari & sampai terisi sebelum fetch
   const customBelumLengkap = periode === "custom" && (!dari || !sampai);
@@ -67,13 +108,32 @@ function IsiRekapIzin() {
       .then((d) => setRekap(d.rekap ?? []));
   }, [jenis, periode, dari, sampai, customBelumLengkap]);
 
-  const judul = jenis === "SAKIT" ? "Izin Sakit" : "Izin Lain-lain";
+  const judul = LABEL_JENIS_FILTER[jenis];
   const totalIzin = rekap?.reduce((t, k) => t + k.jumlah, 0) ?? 0;
 
   function gantiParam(kunci: string, nilai: string) {
     const p = new URLSearchParams(params);
     p.set(kunci, nilai);
     router.replace(`/admin/rekap-izin?${p.toString()}`);
+  }
+
+  function unduhExcel() {
+    setErrorExport("");
+    if (!exportDari || !exportSampai) {
+      setErrorExport("Isi tanggal dari dan sampai terlebih dahulu.");
+      return;
+    }
+    if (new Date(exportSampai) < new Date(exportDari)) {
+      setErrorExport("Tanggal sampai tidak boleh sebelum tanggal dari.");
+      return;
+    }
+    const q = new URLSearchParams({
+      jenis,
+      dari: exportDari,
+      sampai: exportSampai,
+    });
+    // Biarkan browser yang mengunduh — respons berupa file .xlsx
+    window.location.href = `/api/admin/rekap-izin/export?${q.toString()}`;
   }
 
   return (
@@ -83,8 +143,8 @@ function IsiRekapIzin() {
           Rekap {judul} ({PERIODE_LABEL[periode]})
         </h1>
         <div className="flex flex-wrap gap-2">
-          <div className="flex rounded-lg border border-slate-300 bg-white p-0.5 text-sm">
-            {(["SAKIT", "LAINNYA"] as const).map((j) => (
+          <div className="flex flex-wrap rounded-lg border border-slate-300 bg-white p-0.5 text-sm">
+            {JENIS_FILTER.map((j) => (
               <button
                 key={j}
                 onClick={() => gantiParam("jenis", j)}
@@ -94,7 +154,7 @@ function IsiRekapIzin() {
                     : "text-slate-600 hover:bg-slate-100"
                 }`}
               >
-                {j === "SAKIT" ? "Sakit" : "Lain-lain"}
+                {LABEL_JENIS_FILTER[j]}
               </button>
             ))}
           </div>
@@ -150,6 +210,52 @@ function IsiRekapIzin() {
         </div>
       )}
 
+      <div className="rounded-xl bg-white p-4 shadow-sm">
+        <h2 className="text-sm font-semibold">Export ke Excel</h2>
+        <p className="mt-1 text-xs text-slate-500">
+          Pilih rentang tanggal yang ingin diexport. Rentangnya ikut tercetak di
+          dalam file dan di nama filenya. Jenis izin mengikuti filter di atas (
+          <span className="font-medium">{judul}</span>).
+        </p>
+        <div className="mt-3 flex flex-wrap items-end gap-3">
+          <div>
+            <label className="block text-xs font-medium text-slate-500">
+              Dari Tanggal
+            </label>
+            <input
+              type="date"
+              value={exportDari}
+              max={exportSampai || undefined}
+              onChange={(e) => setExportDari(e.target.value)}
+              className="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500">
+              Sampai Tanggal
+            </label>
+            <input
+              type="date"
+              value={exportSampai}
+              min={exportDari || undefined}
+              onChange={(e) => setExportSampai(e.target.value)}
+              className="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            />
+          </div>
+          <button
+            onClick={unduhExcel}
+            className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"
+          >
+            ⬇ Download Excel
+          </button>
+        </div>
+        {errorExport && (
+          <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+            {errorExport}
+          </p>
+        )}
+      </div>
+
       {rekap === null ? (
         <p className="text-slate-500">Memuat...</p>
       ) : rekap.length === 0 ? (
@@ -190,8 +296,13 @@ function IsiRekapIzin() {
                           {formatTanggal(i.tanggalMulai)} —{" "}
                           {formatTanggal(i.tanggalAkhir)}
                         </span>
+                        {jenis === "SEMUA" && (
+                          <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                            {LABEL_JENIS_IZIN[i.jenis]}
+                          </span>
+                        )}
                         <span className="ml-2 text-slate-500">{i.alasan}</span>
-                        {jenis === "SAKIT" &&
+                        {i.jenis === "SAKIT" &&
                           (i.suratDokter ? (
                             <a
                               href={`/api/izin/surat/${i.suratDokter}`}

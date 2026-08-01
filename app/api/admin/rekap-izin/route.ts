@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sesiSaatIni, adalahAdmin, filterLokasiSesi } from "@/lib/auth";
 import { rentangPeriode } from "@/lib/periode";
+import { JENIS_IZIN, type JenisIzin } from "@/lib/izin";
 
-// Rekap izin per karyawan: siapa saja yang izin + jumlahnya, sesuai jenis & periode
+// Rekap izin per karyawan: siapa saja yang izin + jumlahnya, sesuai jenis & periode.
+// jenis "SEMUA" (atau nilai tak dikenal) = semua jenis izin digabung.
 export async function GET(req: Request) {
   const sesi = await sesiSaatIni();
   if (!sesi || !adalahAdmin(sesi.role)) {
@@ -11,7 +13,10 @@ export async function GET(req: Request) {
   }
 
   const params = new URL(req.url).searchParams;
-  const jenis = params.get("jenis") === "LAINNYA" ? "LAINNYA" : "SAKIT";
+  const jenisParam = params.get("jenis") ?? "SEMUA";
+  const jenis = (JENIS_IZIN as readonly string[]).includes(jenisParam)
+    ? (jenisParam as JenisIzin)
+    : null; // null = semua jenis
   const tanggalMulai = rentangPeriode(
     params.get("periode"),
     params.get("dari"),
@@ -19,7 +24,11 @@ export async function GET(req: Request) {
   );
 
   const izin = await prisma.izin.findMany({
-    where: { jenis, tanggalMulai, user: filterLokasiSesi(sesi) },
+    where: {
+      ...(jenis ? { jenis } : {}),
+      tanggalMulai,
+      user: filterLokasiSesi(sesi),
+    },
     include: { user: { select: { id: true, nama: true, lokasi: true } } },
     orderBy: { tanggalMulai: "desc" },
   });
@@ -32,6 +41,7 @@ export async function GET(req: Request) {
       lokasi: string | null;
       jumlah: number;
       izin: {
+        jenis: JenisIzin;
         tanggalMulai: Date;
         tanggalAkhir: Date;
         alasan: string;
@@ -55,6 +65,7 @@ export async function GET(req: Request) {
     }
     entri.jumlah++;
     entri.izin.push({
+      jenis: i.jenis,
       tanggalMulai: i.tanggalMulai,
       tanggalAkhir: i.tanggalAkhir,
       alasan: i.alasan,
@@ -64,5 +75,5 @@ export async function GET(req: Request) {
   }
 
   const rekap = [...perKaryawan.values()].sort((a, b) => b.jumlah - a.jumlah);
-  return NextResponse.json({ jenis, rekap });
+  return NextResponse.json({ jenis: jenis ?? "SEMUA", rekap });
 }

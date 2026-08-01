@@ -55,6 +55,28 @@ model User {
   izin       Izin[]
   tukarLibur TukarLibur[]
   pushSub    PushSubscription[]
+  catatan       Catatan[] @relation("CatatanPenerima")
+  catatanDibuat Catatan[] @relation("CatatanPengirim")
+}
+
+// Catatan/pesan khusus dari admin/owner ke karyawan (Feature 21).
+// Tampil di beranda karyawan + kirim push notification saat dibuat.
+// Kiriman ke banyak karyawan sekaligus disimpan sebagai satu baris PER karyawan
+// (bukan satu baris broadcast) supaya status dibaca bisa dilacak per orang.
+model Catatan {
+  id         String    @id @default(cuid())
+  userId     String    // karyawan penerima
+  user       User      @relation("CatatanPenerima", fields: [userId], references: [id], onDelete: Cascade)
+  batchId    String    // sama untuk semua penerima dari satu kali kirim (untuk mengelompokkan kiriman massal di daftar admin)
+  judul      String
+  isi        String
+  pengirimId String?   // admin/owner pembuat; null kalau akunnya sudah dihapus
+  pengirim   User?     @relation("CatatanPengirim", fields: [pengirimId], references: [id], onDelete: SetNull)
+  dibacaPada DateTime? // diisi saat karyawan menekan "Tandai sudah dibaca"
+  createdAt  DateTime  @default(now())
+
+  @@index([userId, dibacaPada])
+  @@index([batchId])
 }
 
 // Langganan push notification per perangkat/browser

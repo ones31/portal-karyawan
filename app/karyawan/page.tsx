@@ -5,6 +5,7 @@ import { statusMasaKerja } from "@/lib/masa-kerja";
 import { JENIS_IZIN, LABEL_JENIS_IZIN } from "@/lib/izin";
 import { periodeBerjalan } from "@/lib/periode";
 import { hitungPersenKehadiran, warnaKehadiran } from "@/lib/kehadiran";
+import TombolTandaiDibaca from "@/components/TombolTandaiDibaca";
 
 function formatTanggal(d: Date) {
   return d.toLocaleDateString("id-ID", {
@@ -18,7 +19,7 @@ export default async function BerandaKaryawan() {
   const sesi = (await sesiSaatIni())!;
   // Periode berjalan ala penggajian: tanggal 26 s/d 25 bulan berikutnya
   const periode = periodeBerjalan();
-  const [profil, kontrak, rekapJenisIzin, izinPeriode, user] =
+  const [profil, kontrak, rekapJenisIzin, izinPeriode, user, catatanBaru] =
     await Promise.all([
       prisma.profilKaryawan.findUnique({ where: { userId: sesi.userId } }),
       prisma.kontrak.findUnique({ where: { userId: sesi.userId } }),
@@ -43,6 +44,18 @@ export default async function BerandaKaryawan() {
       prisma.user.findUnique({
         where: { id: sesi.userId },
         select: { tanggalMasuk: true },
+      }),
+      // Catatan dari admin/owner yang belum ditandai dibaca (Feature 21)
+      prisma.catatan.findMany({
+        where: { userId: sesi.userId, dibacaPada: null },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          judul: true,
+          isi: true,
+          createdAt: true,
+          pengirim: { select: { nama: true } },
+        },
       }),
     ]);
 
@@ -94,6 +107,28 @@ export default async function BerandaKaryawan() {
 
   return (
     <div className="space-y-4">
+      {catatanBaru.map((c) => (
+        <div
+          key={c.id}
+          className="rounded-xl border-l-4 border-amber-400 bg-amber-50 p-5 shadow-sm"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <h2 className="font-semibold text-amber-900">
+                <span aria-hidden>📌</span> {c.judul}
+              </h2>
+              <p className="mt-0.5 text-xs text-amber-700">
+                Catatan dari {c.pengirim?.nama ?? "Admin"} ·{" "}
+                {formatTanggal(c.createdAt)}
+              </p>
+            </div>
+            <TombolTandaiDibaca id={c.id} />
+          </div>
+          <p className="mt-3 text-sm whitespace-pre-wrap text-amber-900">
+            {c.isi}
+          </p>
+        </div>
+      ))}
       {kontrakMenungguTtd && (
         <Link
           href="/karyawan/kontrak"

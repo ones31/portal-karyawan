@@ -201,6 +201,22 @@ Validasi identik dengan pengajuan mandiri (batas 7 hari izin menikah, dst. — s
 *(Tukar Libur belum termasuk fitur ini — bisa ditambahkan dengan pola yang sama kalau dibutuhkan.)*
 **User yang memakai:** Admin, Owner
 
+#### Feature 21 — Catatan/Pesan Khusus dari Admin/Owner ke Karyawan ✅
+**Deskripsi:** Admin/owner bisa mengirim **catatan atau pengumuman** ke karyawan lewat menu navbar **"Catatan"** (`/admin/catatan`). Dropdown "Kirim ke" punya tiga bentuk tujuan: **satu karyawan**, **semua karyawan**, atau **semua karyawan di satu lokasi** (`SEMUA` / `LOKASI:<nama>` / id karyawan — konstanta di `lib/catatan.ts`, logika server di `lib/kirim-catatan.ts`).
+
+Di sisi karyawan, catatan yang belum dibaca tampil sebagai **banner kuning di paling atas beranda** (`/karyawan`) lengkap dengan isi & tombol **"Tandai sudah dibaca"**; seluruh riwayat (dibaca & belum) ada di menu **"Catatan"** (`/karyawan/catatan`). Setiap pengiriman juga memicu **push notification** ke tiap penerima (`kirimNotifKeUser`, gagal kirim tidak menggagalkan penyimpanan).
+
+Kiriman massal disimpan **satu baris per karyawan** dengan `batchId` yang sama, sehingga: status dibaca terlacak **per orang** (admin melihat "12/45 sudah membaca" + tabel rinci siapa yang sudah/belum), dan satu kiriman bisa **ditarik kembali sekaligus** (`DELETE /api/admin/catatan/[batchId]`) kalau salah kirim. Tunduk pada Feature 19: admin ber-lokasiAkses hanya bisa mengirim/menarik catatan untuk karyawan di lokasinya (403/404 kalau lintas lokasi); owner bebas.
+**User yang memakai:** Admin, Owner, Karyawan
+
+#### Feature 22 — Export Rekap Izin ke Excel (.xlsx) ✅
+**Deskripsi:** Halaman **Rekap Izin** (`/admin/rekap-izin`) kini punya panel **"Export ke Excel"** dengan input **Dari Tanggal** & **Sampai Tanggal** yang **wajib diisi** — endpoint `GET /api/admin/rekap-izin/export` menolak 400 kalau kosong atau kalau `sampai < dari`. Rentang tanggalnya **ikut tercetak di dalam file** (baris "Periode: 1 Juli 2026 s/d 31 Juli 2026") **dan di nama filenya** (`Rekap-Izin-Sakit_2026-07-01_sd_2026-07-31.xlsx`), supaya file yang sudah diunduh tidak pernah ambigu periodenya.
+
+File berisi 2 sheet (dibuat di `lib/export-izin.ts` dengan `exceljs`): **"Rekap Izin"** (No, Nama, Lokasi, Jenis, Tanggal Mulai/Akhir, Jumlah Hari, Alasan, Status, Surat Dokter, Diajukan Pada — header dibekukan & diberi warna) dan **"Per Karyawan"** (jumlah izin + total hari per orang, terbanyak dulu).
+
+Sekalian di feature ini, **filter jenis di halaman rekap diperluas** dari hanya Sakit/Lain-lain menjadi **Semua Jenis + keempat jenis izin**, sehingga halaman ini menjadi tempat melihat *seluruh* kumpulan pengajuan izin (tabel "Pengajuan Izin Terbaru" di dashboard menautkan ke sini lewat "Lihat semua & export Excel →"). Export mengikuti filter jenis yang aktif dan tetap ter-scope lokasi admin (Feature 19).
+**User yang memakai:** Admin, Owner
+
 #### Feature 17 — Ranking Persentase Kehadiran per Lokasi di Dashboard ✅
 **Deskripsi:** Dashboard admin/owner menampilkan dua tabel **"Tingkat Kehadiran"** terpisah per lokasi (Tegal Alur & Menceng), berisi semua karyawan aktif dengan lokasi terisi, diurutkan **dari persentase kehadiran terendah ke tertinggi**. Memakai formula & periode yang sama dengan Feature 14 (periode berjalan 26–25, izin DITOLAK tidak mengurangi), dipusatkan di `lib/kehadiran.ts` (`hitungPersenKehadiran`, `warnaKehadiran`) supaya beranda karyawan & dashboard admin memakai satu sumber logika yang sama. Query di `app/api/admin/dashboard/route.ts` menghindari N+1 dengan satu `findMany` izin dikelompokkan per user di JS.
 **User yang memakai:** Admin, Owner
@@ -211,7 +227,7 @@ Validasi identik dengan pengajuan mandiri (batas 7 hari izin menikah, dst. — s
 *Fitur yang belum wajib di MVP, bisa masuk fase berikutnya:*
 
 - Grafik/chart di dashboard (tren izin per bulan)
-- Export data karyawan & izin (Excel/CSV)
+- Export data **karyawan** ke Excel/CSV (export **izin** sudah jadi — lihat Feature 22)
 - Notifikasi otomatis (WhatsApp/email) saat kontrak mendekati habis atau ada pengajuan izin baru
 - Aplikasi Android (memakai REST API yang sudah ada; perlu tambah dukungan token `Authorization: Bearer`)
 - Riwayat perpanjangan kontrak (saat ini edit masa kontrak menimpa data lama)
@@ -287,6 +303,20 @@ Validasi identik dengan pengajuan mandiri (batas 7 hari izin menikah, dst. — s
 | alasan | |
 | surat_dokter | file upload (PDF/JPG/PNG maks 5 MB), **opsional** (tidak ada validasi wajib berdasar jumlah hari). Hanya bisa dibuka pemilik izin dan admin/owner |
 | status | `MENUNGGU` / `DISETUJUI` / `DITOLAK` (di-approve admin/owner) |
+
+---
+
+### 4.5 Entity: Catatan
+*Pesan/pengumuman dari admin/owner ke karyawan (Feature 21).*
+
+| Field | Keterangan |
+|---|---|
+| userId | karyawan penerima. Kiriman massal = **satu baris per penerima**, bukan satu baris broadcast |
+| batchId | sama untuk semua penerima dari satu kali kirim — dipakai mengelompokkan di daftar admin & menarik kembali satu kiriman sekaligus |
+| judul | maks 100 karakter |
+| isi | maks 2000 karakter, line break dipertahankan saat ditampilkan |
+| pengirimId | admin/owner pembuat; `null` kalau akunnya dihapus (`onDelete: SetNull`) |
+| dibacaPada | `null` = belum dibaca (tampil sebagai banner di beranda karyawan); diisi saat karyawan menekan "Tandai sudah dibaca" |
 
 ---
 

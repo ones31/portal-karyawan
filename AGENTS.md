@@ -33,6 +33,9 @@ Server dev: `npm run dev` di port **3000** (user sering membukanya di browser se
 - `lib/izin.ts` — konstanta MURNI, client-safe: `JENIS_IZIN`, `LABEL_JENIS_IZIN`, `MAKS_HARI_MENIKAH` (7), `jumlahHari()`. JANGAN tambah logika server (prisma/fs) di sini — dipakai komponen client.
 - `lib/pengajuan-izin.ts` — server-only: `buatIzin()` (validasi + simpan + notif), dipakai `app/api/izin` (karyawan) & `app/api/admin/karyawan/[id]/izin` (admin masukkan izin atas nama karyawan)
 - `lib/approval.ts` — `prosesIzin()`, `prosesTukarLibur()` (update status + notif hasil), dipakai rute admin & `app/api/admin/agent-approval`
+- `lib/catatan.ts` — konstanta MURNI, client-safe: `MAKS_JUDUL_CATATAN` (100), `MAKS_ISI_CATATAN` (2000), `TUJUAN_SEMUA`, `lokasiDariTujuan()`. JANGAN tambah logika server di sini.
+- `lib/kirim-catatan.ts` — server-only: `kirimCatatan()` (validasi + scope lokasi + simpan per penerima + notif), dipakai `app/api/admin/catatan`
+- `lib/export-izin.ts` — server-only: `buatExcelRekapIzin()`, `namaFileExport()` (pakai `exceljs`), dipakai `app/api/admin/rekap-izin/export`
 - `lib/kontrak.ts` — `ISI_KONTRAK_DEFAULT`, `BATAS_HARI_KONTRAK_HABIS` (30)
 - `lib/masa-kerja.ts` — `statusMasaKerja()`, `BATAS_TAHUN_TETAP` (3)
 - `lib/lokasi.ts` — `DAFTAR_LOKASI` = ["Tegal Alur", "Menceng"], `lokasiValid()`
@@ -58,8 +61,9 @@ Server dev: `npm run dev` di port **3000** (user sering membukanya di browser se
 | Owner | seno / dian | seno123 / dian123 |
 | Admin (lokasiAkses: Menceng) | admin | admin123 |
 | Admin (lokasiAkses: Tegal Alur) | admin2 | admin2123 |
-| Karyawan lengkap (ada kontrak + TTD) | Budi Santoso | karyawan123 |
-| Karyawan impor (±45 orang) | Haryanto, Sunarto, dll. | 123 |
+| Karyawan impor (±49 orang) | Akmal, Andrew, Haryanto, Sunarto, dll. | 123 |
+
+⚠️ Akun contoh lama **Budi Santoso / Siti / Ani / Rudi sudah TIDAK ada** di database (dicek 1 Agu 2026 — login balas 401). Jangan pakai untuk pengujian; kalau butuh karyawan uji, buat sendiri berawalan `Uji ` lalu hapus (kesalahan #6).
 
 ## 3. Kesalahan yang PASTI dilakukan model lemah di sini — dan aturan penangkalnya
 
@@ -79,6 +83,8 @@ Server dev: `npm run dev` di port **3000** (user sering membukanya di browser se
 14. **Mengasumsikan `vercel deploy` menghormati `.gitignore`.** Kejadian nyata: `.env` (password DB + kunci privat) ikut ter-upload ke deployment karena tidak ada `.vercelignore` eksplisit — `.gitignore` TIDAK otomatis dipakai untuk `vercel deploy` CLI (beda dari git push). → *Aturan: proyek yang di-deploy ke Vercel WAJIB punya `.vercelignore` sendiri; setelah deploy pertama, selalu verifikasi lewat `GET /v6/deployments/{id}/files` bahwa tidak ada `.env`/secret yang ikut.*
 15. **Commit git dengan email placeholder/asal.** Kejadian nyata: `git config user.email "seno@tokomarmo.local"` (dikarang, bukan email asli user) membuat Vercel memblokir deploy dengan `TEAM_ACCESS_REQUIRED` karena tidak bisa memverifikasi commit author = pemilik akun. → *Aturan: `git config user.email`/`user.name` proyek yang akan di-deploy harus pakai identitas ASLI user (email yang terverifikasi di platform deploy-nya), bukan nilai sembarang.*
 16. **Menambah fungsi server (prisma/fs) ke file `lib/*.ts` yang isinya sudah dipakai komponen client.** Kejadian nyata: `buatIzin()` (pakai `fs/promises` lewat `lib/surat-dokter.ts`) ditambahkan ke `lib/izin.ts` yang juga diimpor `app/karyawan/izin/page.tsx` (client) → build error "Module not found: fs/promises". → *Aturan: sebelum menambah logika ke `lib/*.ts`, cek dulu `grep -rl "from \"@/lib/<nama>\"" app/` — kalau ada komponen `"use client"` yang mengimpornya, taruh logika server di file BARU terpisah (pola: `lib/izin.ts` konstanta murni vs `lib/pengajuan-izin.ts` server-only).*
+
+17. **Menyalahkan kode saat gejalanya sebenarnya dev server rusak sesudah `npm install`.** Kejadian nyata: sesudah `npm install exceljs`, halaman client terlihat "state-nya tidak pernah terisi" (dropdown kosong, daftar mentok "Memuat...") padahal API balas 200. Penyebabnya Turbopack panic `Failed to write app endpoint ... Next.js package not found` (log menyebut `Next.js version: 0.0.0`) → Fast Refresh rebuild terus-menerus → React remount sebelum `fetch` selesai. → *Aturan: kalau state client tidak pernah settle TAPI endpointnya 200, JANGAN langsung bongkar komponen — cek `preview_logs` dulu untuk panic Turbopack & console untuk `[Fast Refresh] rebuilding` berulang. Perbaikannya di lingkungan, bukan kode: `pkill -f "next dev"; rm -rf .next; npm install` lalu nyalakan ulang server.*
 
 ## 4. Standar kualitas per jenis deliverable (kriteria bisa dicek, bukan kata sifat)
 

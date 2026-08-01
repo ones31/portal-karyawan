@@ -161,7 +161,15 @@ export default function AdminDashboard() {
       </div>
 
       <div className="rounded-xl bg-white p-6 shadow-sm">
-        <h2 className="font-semibold">Pengajuan Izin Terbaru</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold">Pengajuan Izin Terbaru</h2>
+          <Link
+            href={`/admin/rekap-izin?jenis=SEMUA&periode=${periode}`}
+            className="text-sm font-medium text-blue-600 hover:underline"
+          >
+            Lihat semua &amp; export Excel →
+          </Link>
+        </div>
         {izin.length === 0 ? (
           <p className="mt-3 text-sm text-slate-500">Belum ada pengajuan izin.</p>
         ) : (

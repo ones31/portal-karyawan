@@ -17,6 +17,7 @@ export default async function KaryawanLayout({
         nama={sesi.nama}
         links={[
           { href: "/karyawan", label: "Beranda" },
+          { href: "/karyawan/catatan", label: "Catatan" },
           { href: "/karyawan/data-pribadi", label: "Data Pribadi" },
           { href: "/karyawan/kontrak", label: "Kontrak Kerja" },
           { href: "/karyawan/izin", label: "Izin" },
