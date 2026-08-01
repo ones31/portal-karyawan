@@ -1,6 +1,6 @@
 # Ringkasan Sesi — Portal Toko Marmo
 
-**Versi: v2** — diperbarui 2026-08-01
+**Versi: v3** — diperbarui 2026-08-01
 
 > Ditulis untuk melanjutkan pekerjaan di sesi Claude Code baru. Baca ini + `docs/PRD.md` (kebenaran tunggal fitur, sekarang sampai **Feature 22**) + `AGENTS.md` (manual operasi & aturan kerja, sekarang 17 kesalahan umum) sebelum lanjut.
 
@@ -8,9 +8,9 @@
 
 **Live di produksi:** https://portal-karyawan-theta.vercel.app **dan** domain custom **https://www.marmo.my.id** (alias ke deployment yang sama). Database **PostgreSQL (Neon)** — dev lokal dan produksi **berbagi database yang sama persis**, jadi perubahan schema/data lokal langsung berlaku di produksi juga. File surat dokter di **Vercel Blob**.
 
-**Deploy terakhir:** commit `55823bd` ("menu Ajukan Izin admin + perbaiki kontrak lewat tanggal hilang dari daftar") — status READY, diverifikasi via curl.
+**Deploy terakhir:** commit `93d5da5` ("catatan admin ke karyawan + export rekap izin ke Excel") — 1 Agu 2026, status READY di kedua domain. Diverifikasi di produksi: login 200, `/admin/catatan` & `/admin/rekap-izin` 200, export `.xlsx` benar-benar terunduh (8.7 KB, isi & rentang tanggal dicek), kasus negatif 400. Deployment juga dicek lewat `GET /v6/deployments/{id}/files` — **tidak ada `.env`/secret yang ikut ter-upload**.
 
-⚠️ **Feature 21 & 22 (di bawah) BELUM di-deploy** — sudah selesai & diverifikasi lokal, tapi produksi masih di `55823bd`. Ingat: schema `Catatan` sudah ter-migrate ke Neon yang **dipakai bersama produksi**, jadi tabelnya sudah ada di produksi walau kodenya belum.
+Catatan: schema `Catatan` ter-migrate ke Neon yang **dipakai bersama dev & produksi**, jadi perubahan schema lokal langsung berlaku di produksi.
 
 ## Fitur terbaru (Feature 21–22 di PRD) — sesi 1 Agu 2026
 
@@ -116,5 +116,6 @@ Setiap kali file ini diperbarui: naikkan **Versi** di judul +1, lalu tambah satu
 
 | Versi | Tanggal | Ringkasan perubahan |
 |---|---|---|
+| v3 | 2026-08-01 | Feature 21 & 22 **di-deploy ke produksi** (commit `93d5da5`, READY di www.marmo.my.id) & diverifikasi di sana; catatan "belum di-deploy" di v2 dicabut. |
 | v2 | 2026-08-01 | **Feature 21** (catatan/pesan admin→karyawan, banner beranda + push notif + read receipt + tarik kembali) & **Feature 22** (export rekap izin ke .xlsx dengan rentang tanggal wajib; filter jenis diperluas ke semua jenis izin). Dependency baru `exceljs`. Kesalahan #17 dicatat di AGENTS.md. Akun contoh Budi Santoso dkk. dikonfirmasi sudah tidak ada di DB. Path repo di dokumen dibetulkan ke `~/projects/portal-karyawan`. |
 | v1 | 2026-07-30 | Baseline mulai pakai penomoran versi. Isi saat ini: Feature 18–20 (OpenClaw, admin ber-lokasi, ajukan izin admin) + perbaikan bug kontrak lewat tanggal. |
