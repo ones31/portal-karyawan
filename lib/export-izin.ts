@@ -53,6 +53,22 @@ function jumlahHariIzin(mulai: Date, akhir: Date) {
   return Math.floor((akhir.getTime() - mulai.getTime()) / 86400000) + 1;
 }
 
+function tanggalRingkas(d: Date) {
+  return d.toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+// Satu entri tanggal izin untuk kolom rekap: "17 Jul 2026" kalau sehari,
+// "30 Jul 2026 – 31 Jul 2026" kalau lebih dari sehari.
+function rentangIzin(mulai: Date, akhir: Date) {
+  const a = tanggalRingkas(mulai);
+  const b = tanggalRingkas(akhir);
+  return a === b ? a : `${a} – ${b}`;
+}
+
 // Nama file yang sudah menyertakan rentang tanggal, mis.
 // "Rekap-Izin-Sakit_2026-07-01_sd_2026-07-31.xlsx"
 export function namaFileExport(labelJenis: string, dari: Date, sampai: Date) {
@@ -146,13 +162,20 @@ export async function buatExcelRekapIzin(
 
   // ---- Sheet 2: rekap jumlah per karyawan ----
   const ws2 = wb.addWorksheet("Per Karyawan");
-  ws2.columns = [{ width: 5 }, { width: 24 }, { width: 13 }, { width: 14 }, { width: 14 }];
+  ws2.columns = [
+    { width: 5 },
+    { width: 24 },
+    { width: 13 },
+    { width: 14 },
+    { width: 12 },
+    { width: 55 },
+  ];
 
   const judul2 = ws2.addRow([
     `REKAP PER KARYAWAN — ${labelJenis} (${tanggalPanjang(dari)} s/d ${tanggalPanjang(sampai)})`,
   ]);
   judul2.font = { bold: true, size: 12 };
-  ws2.mergeCells(judul2.number, 1, judul2.number, 5);
+  ws2.mergeCells(judul2.number, 1, judul2.number, 6);
   ws2.addRow([]);
 
   const header2 = ws2.addRow([
@@ -161,6 +184,7 @@ export async function buatExcelRekapIzin(
     "Lokasi",
     "Jumlah Izin",
     "Total Hari",
+    "Tanggal Izin",
   ]);
   header2.font = { bold: true };
   header2.alignment = { horizontal: "center" };
@@ -180,25 +204,47 @@ export async function buatExcelRekapIzin(
 
   const perKaryawan = new Map<
     string,
-    { nama: string; lokasi: string | null; jumlah: number; totalHari: number }
+    {
+      nama: string;
+      lokasi: string | null;
+      jumlah: number;
+      totalHari: number;
+      // Tanggal tiap izin, disimpan mentah dulu supaya bisa diurutkan kronologis
+      tanggal: { mulai: Date; akhir: Date }[];
+    }
   >();
   for (const b of baris) {
     let e = perKaryawan.get(b.nama);
     if (!e) {
-      e = { nama: b.nama, lokasi: b.lokasi, jumlah: 0, totalHari: 0 };
+      e = { nama: b.nama, lokasi: b.lokasi, jumlah: 0, totalHari: 0, tanggal: [] };
       perKaryawan.set(b.nama, e);
     }
     e.jumlah++;
     e.totalHari += jumlahHariIzin(b.tanggalMulai, b.tanggalAkhir);
+    e.tanggal.push({ mulai: b.tanggalMulai, akhir: b.tanggalAkhir });
   }
 
   [...perKaryawan.values()]
     .sort((a, b) => b.jumlah - a.jumlah || a.nama.localeCompare(b.nama))
     .forEach((k, idx) => {
-      const r = ws2.addRow([idx + 1, k.nama, k.lokasi ?? "—", k.jumlah, k.totalHari]);
-      r.getCell(1).alignment = { horizontal: "center" };
-      r.getCell(4).alignment = { horizontal: "center" };
-      r.getCell(5).alignment = { horizontal: "center" };
+      const daftarTanggal = k.tanggal
+        .slice()
+        .sort((a, b) => a.mulai.getTime() - b.mulai.getTime())
+        .map((t) => rentangIzin(t.mulai, t.akhir))
+        .join(", ");
+      const r = ws2.addRow([
+        idx + 1,
+        k.nama,
+        k.lokasi ?? "—",
+        k.jumlah,
+        k.totalHari,
+        daftarTanggal,
+      ]);
+      r.alignment = { vertical: "top" };
+      r.getCell(1).alignment = { horizontal: "center", vertical: "top" };
+      r.getCell(4).alignment = { horizontal: "center", vertical: "top" };
+      r.getCell(5).alignment = { horizontal: "center", vertical: "top" };
+      r.getCell(6).alignment = { wrapText: true, vertical: "top" };
     });
 
   const buffer = await wb.xlsx.writeBuffer();

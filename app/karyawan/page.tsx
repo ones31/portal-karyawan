@@ -43,7 +43,7 @@ export default async function BerandaKaryawan() {
       }),
       prisma.user.findUnique({
         where: { id: sesi.userId },
-        select: { tanggalMasuk: true },
+        select: { tanggalMasuk: true, tetapManual: true },
       }),
       // Catatan dari admin/owner yang belum ditandai dibaca (Feature 21)
       prisma.catatan.findMany({
@@ -59,7 +59,8 @@ export default async function BerandaKaryawan() {
       }),
     ]);
 
-  const tetap = statusMasaKerja(user?.tanggalMasuk) === "TETAP";
+  const tetap =
+    statusMasaKerja(user?.tanggalMasuk, user?.tetapManual ?? false) === "TETAP";
   const jumlahPerJenis = Object.fromEntries(
     JENIS_IZIN.map((j) => [
       j,
@@ -88,7 +89,7 @@ export default async function BerandaKaryawan() {
       judul: "2. Tanda Tangani Kontrak Kerja",
       selesai: tetap || !!kontrak?.ditandatanganiPada || !!profil?.tandaTangan,
       keterangan: tetap
-        ? "Karyawan tetap (masa kerja > 3 tahun) — tidak terikat masa kontrak."
+        ? "Karyawan tetap — tidak terikat masa kontrak."
         : kontrak?.ditandatanganiPada
           ? `Ditandatangani pada ${formatTanggal(kontrak.ditandatanganiPada)}.`
           : profil?.tandaTanganPada
@@ -150,7 +151,7 @@ export default async function BerandaKaryawan() {
             <h1 className="text-xl font-bold">Selamat datang, {sesi.nama}</h1>
             {tetap ? (
               <p className="mt-1 text-sm font-medium text-green-700">
-                Karyawan Tetap (masa kerja &gt; 3 tahun)
+                Karyawan Tetap
               </p>
             ) : (
               kontrak && (

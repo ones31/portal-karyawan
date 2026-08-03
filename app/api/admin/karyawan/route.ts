@@ -29,6 +29,7 @@ export async function GET(req: Request) {
       phone: true,
       lokasi: true,
       tanggalMasuk: true,
+      tetapManual: true,
       profil: true,
       kontrak: {
         select: {
@@ -52,6 +53,7 @@ export async function GET(req: Request) {
     phone: k.phone,
     lokasi: k.lokasi,
     tanggalMasuk: k.tanggalMasuk,
+    tetapManual: k.tetapManual,
     tanggalLahir: k.profil?.tanggalLahir ?? null,
     profilLengkap: !!k.profil?.nik,
     kontrak: k.kontrak,

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { sesiSaatIni, adalahAdmin, filterLokasiSesi } from "@/lib/auth";
 import { rentangPeriode, periodeBerjalan } from "@/lib/periode";
 import { BATAS_HARI_KONTRAK_HABIS } from "@/lib/kontrak";
-import { BATAS_TAHUN_TETAP } from "@/lib/masa-kerja";
+import { filterMasihKontrak } from "@/lib/masa-kerja";
 import { DAFTAR_LOKASI } from "@/lib/lokasi";
 import { hitungPersenKehadiran } from "@/lib/kehadiran";
 
@@ -19,8 +19,7 @@ export async function GET(req: Request) {
   const lokasiScope = filterLokasiSesi(sesi);
   // Kontrak segera habis ATAU sudah lewat (lihat app/api/admin/kontrak-habis) —
   // karyawan yang sudah Tetap dikecualikan biar kontrak basi tidak nyangkut.
-  const batasTetap = new Date();
-  batasTetap.setFullYear(batasTetap.getFullYear() - BATAS_TAHUN_TETAP);
+  const masihKontrak = filterMasihKontrak();
 
   const [
     totalKaryawan,
@@ -43,7 +42,7 @@ export async function GET(req: Request) {
               Date.now() + BATAS_HARI_KONTRAK_HABIS * 24 * 60 * 60 * 1000
             ),
           },
-          user: { ...lokasiScope, tanggalMasuk: { gt: batasTetap } },
+          user: { ...lokasiScope, ...masihKontrak },
         },
       }),
       // Pendaftaran menunggu belum punya lokasi (baru ditentukan saat approve),

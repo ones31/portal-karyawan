@@ -37,9 +37,9 @@ Server dev: `npm run dev` di port **3000** (user sering membukanya di browser se
 - `lib/kirim-catatan.ts` — server-only: `kirimCatatan()` (validasi + scope lokasi + simpan per penerima + notif), dipakai `app/api/admin/catatan`
 - `lib/export-izin.ts` — server-only: `buatExcelRekapIzin()`, `namaFileExport()` (pakai `exceljs`), dipakai `app/api/admin/rekap-izin/export`
 - `lib/kontrak.ts` — `ISI_KONTRAK_DEFAULT`, `BATAS_HARI_KONTRAK_HABIS` (30)
-- `lib/masa-kerja.ts` — `statusMasaKerja()`, `BATAS_TAHUN_TETAP` (3)
+- `lib/masa-kerja.ts` — `statusMasaKerja(tanggalMasuk, tetapManual)`, `filterMasihKontrak()` (filter Prisma "belum tetap"), `BATAS_TAHUN_TETAP` (3), `TAHUN_TANPA_TETAP_OTOMATIS` (2026)
 - `lib/lokasi.ts` — `DAFTAR_LOKASI` = ["Tegal Alur", "Menceng"], `lokasiValid()`
-- `lib/periode.ts` — `rentangPeriode(periode, dari?, sampai?)` — bulan/tahun/custom/semua
+- `lib/periode.ts` — `rentangPeriode(periode, dari?, sampai?)` (bulan/tahun/custom/semua), `periodeBerjalan()` (siklus gajian 26–25), `periodeSiklus(offset)` (siklus ke-N sebagai rentang inklusif, dipakai halaman Laporan Izin), `isoTanggalLokal()`
 - `lib/dokumen-toko.ts` — teks resmi: peraturan toko, kontrak percobaan, `kontrakSatuTahun(mulai, akhir)`, PKWT (format markdown-mini, dirender `components/DokumenMarkdown`)
 - `lib/surat-dokter.ts` — file upload di `uploads/` (DI LUAR `public/`), disajikan via API ber-auth
 - `lib/push.ts` — `kirimNotifKeUser()`, `kirimNotifKeAdmin()`
@@ -47,7 +47,8 @@ Server dev: `npm run dev` di port **3000** (user sering membukanya di browser se
 **Aturan bisnis yang berlaku (jangan "diperbaiki" diam-diam):**
 - Login pakai **nama** (bukan email), **tidak case-sensitive**. Nama unik.
 - Role: `SUPER_ADMIN` (owner; bisa buat akun admin), `ADMIN`, `KARYAWAN`. Cek admin selalu via `adalahAdmin()` — jangan `role === "ADMIN"`.
-- Kontrak otomatis saat TTD onboarding: masa kerja **< 3 bulan** → percobaan 3 bulan dari `tanggalMasuk`; **3 bln–3 thn** → kontrak 1 tahun bergulir dari akhir masa 3 bulan; **> 3 tahun** → karyawan TETAP, kontrak dikosongkan.
+- Kontrak otomatis saat TTD onboarding: masa kerja **< 3 bulan** → percobaan 3 bulan dari `tanggalMasuk`; **≥ 3 bulan** → kontrak 1 tahun bergulir dari akhir masa 3 bulan, berulang terus.
+- **Karyawan TETAP (Feature 23 — aturan berubah, jangan pakai ingatan lama):** karyawan yang `tanggalMasuk`-nya **tahun 2026 ke atas TIDAK PERNAH otomatis jadi tetap** walau masa kerjanya > 3 tahun — kontraknya diperpanjang terus. Status tetap untuk mereka hanya lewat `User.tetapManual` yang **cuma boleh diubah SUPER_ADMIN** (403 untuk admin biasa). Karyawan lama (masuk < 2026) masih pakai aturan lama > `BATAS_TAHUN_TETAP` (3) tahun = otomatis tetap. Semua pengecekan WAJIB lewat `statusMasaKerja(tanggalMasuk, tetapManual)` atau `filterMasihKontrak()` di `lib/masa-kerja.ts` — **jangan tulis ulang perbandingan tanggal 3 tahun inline** (dulu ada 2 tempat yang begitu di dashboard & kontrak-habis, sudah diganti). Menetapkan tetap TIDAK menghapus kontrak yang sudah ada (bukti hukum, lihat #8).
 - Izin: `SAKIT` (2 tipe: tanpa/dengan surat dokter, PDF/JPG/PNG ≤ 5 MB — **opsional, tidak ada lagi validasi wajib berdasar jumlah hari**, dihapus per permintaan user), `LAINNYA`, `TUGAS_NEGARA` (1 tanggal, alasan opsional), `MENIKAH` (maks 7 hari). Tukar libur = model terpisah `TukarLibur`, di UI karyawan menyatu di dropdown "Jenis Pengajuan". Catatan: teks resmi peraturan toko (`lib/kontrak.ts`, `ISI_KONTRAK_DEFAULT`) MASIH menyebut aturan lama ("izin sakit >1 hari wajib surat dokter") — belum diubah karena itu dokumen resmi (lihat aturan #12), perlu keputusan user terpisah kalau mau disinkronkan.
 - Surat dokter = dokumen medis: hanya pemilik izin & admin/owner yang boleh membuka (`/api/izin/surat/[nama]`).
 - Notifikasi push: pengajuan baru → admin+owner; hasil approval → karyawan ybs. Pemanggilan notif SELALU `await ...catch(() => {})` — tidak boleh menggagalkan mutasi utamanya.

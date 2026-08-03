@@ -1,8 +1,8 @@
 # Ringkasan Sesi — Portal Toko Marmo
 
-**Versi: v3** — diperbarui 2026-08-01
+**Versi: v4** — diperbarui 2026-08-03
 
-> Ditulis untuk melanjutkan pekerjaan di sesi Claude Code baru. Baca ini + `docs/PRD.md` (kebenaran tunggal fitur, sekarang sampai **Feature 22**) + `AGENTS.md` (manual operasi & aturan kerja, sekarang 17 kesalahan umum) sebelum lanjut.
+> Ditulis untuk melanjutkan pekerjaan di sesi Claude Code baru. Baca ini + `docs/PRD.md` (kebenaran tunggal fitur, sekarang sampai **Feature 25**) + `AGENTS.md` (manual operasi & aturan kerja, sekarang 17 kesalahan umum) sebelum lanjut.
 
 ## Status saat ini
 
@@ -12,7 +12,30 @@
 
 Catatan: schema `Catatan` ter-migrate ke Neon yang **dipakai bersama dev & produksi**, jadi perubahan schema lokal langsung berlaku di produksi.
 
-## Fitur terbaru (Feature 21–22 di PRD) — sesi 1 Agu 2026
+## Fitur terbaru (Feature 23–25 di PRD) — sesi 3 Agu 2026
+
+⚠️ **BELUM di-deploy.** Sudah selesai & diverifikasi lokal, produksi masih di `f071542`.
+
+### Feature 23 — ATURAN BISNIS BERUBAH: tidak ada karyawan tetap otomatis untuk angkatan 2026+
+Ini perubahan aturan, bukan sekadar fitur. **Baca sebelum menyentuh apa pun soal kontrak.**
+- Karyawan dengan `tanggalMasuk` **tahun 2026 ke atas** tidak pernah otomatis jadi tetap walau masa kerja > 3 tahun — kontrak diperpanjang terus: **3 bulan pertama, lalu 1 tahun berulang selamanya**
+- Status tetap untuk mereka hanya lewat field baru **`User.tetapManual`**, centang di Edit Karyawan yang **hanya bisa diubah owner** (admin biasa → 403)
+- **Karyawan lama (masuk < 2026) tidak berubah** — masih otomatis tetap setelah 3 tahun
+- Semua logika dipusatkan di `lib/masa-kerja.ts`: `statusMasaKerja(tanggalMasuk, tetapManual)`, `filterMasihKontrak()` (filter Prisma), `TAHUN_TANPA_TETAP_OTOMATIS = 2026`. Dua tempat yang dulu membandingkan tanggal 3 tahun inline (dashboard & kontrak-habis) sudah diganti ke `filterMasihKontrak()`
+- Menetapkan tetap **tidak menghapus kontrak** yang sudah ada (bukti hukum) — hanya berhenti muncul di Kontrak Segera Habis
+
+### Feature 24 — Kolom "Tanggal Izin" di sheet Per Karyawan file export
+Sheet "Per Karyawan" di `.xlsx` kini menampilkan tanggal tiap izin, urut kronologis: `"10 Jul 2026, 15 Jul 2026, 17 Jul 2026"`, izin multi-hari jadi rentang `"30 Jul 2026 – 31 Jul 2026"`.
+
+### Feature 25 — Menu & halaman baru "Laporan Izin"
+`/admin/laporan-izin`, menu tepat setelah "Daftar Karyawan". Isinya sama persis dengan file export tapi di layar.
+- **Default = periode gajian berjalan (26 bulan ini – 25 bulan berikutnya)** via `periodeSiklus()` di `lib/periode.ts`
+- Tombol geser periode ← →, plus input Dari/Sampai untuk rentang bebas
+- Dua tampilan: **Rincian** (= sheet "Rekap Izin") & **Per Karyawan** (= sheet "Per Karyawan", termasuk Tanggal Izin)
+- Filter jenis + tombol Download Excel yang ikut periode & filter yang tampil
+- Tanpa endpoint baru — pakai `GET /api/admin/rekap-izin` yang sudah ter-scope lokasi
+
+## Fitur sesi sebelumnya (Feature 21–22 di PRD) — 1 Agu 2026
 
 ### Feature 21 — Catatan/pesan khusus admin → karyawan
 Menu **"Catatan"** di navbar admin (`/admin/catatan`) & karyawan (`/karyawan/catatan`).
@@ -100,7 +123,7 @@ Kalau schema Prisma berubah: `npx prisma migrate dev --name <nama>` lalu **resta
 
 ## Dokumen rujukan di repo
 
-- **`docs/PRD.md`** — 22 fitur ✅, data model (termasuk `lokasiAkses` & entity `Catatan`), fase project. **Selalu update setiap fitur baru.**
+- **`docs/PRD.md`** — 25 fitur ✅, data model (termasuk `lokasiAkses`, `tetapManual` & entity `Catatan`), fase project. **Selalu update setiap fitur baru.**
 - **`AGENTS.md`** — manual operasi: stack terkunci, konstanta bisnis per file `lib/`, **17 kesalahan umum** + aturan penangkalnya, kapan harus berhenti & bertanya.
 - **`.claude/skills/`** — `verifikasi-portal`, `tambah-fitur-portal`, `impor-karyawan`.
 
@@ -116,6 +139,7 @@ Setiap kali file ini diperbarui: naikkan **Versi** di judul +1, lalu tambah satu
 
 | Versi | Tanggal | Ringkasan perubahan |
 |---|---|---|
+| v4 | 2026-08-03 | **Feature 23** (aturan kontrak berubah: angkatan 2026+ tidak ada tetap otomatis, hanya manual oleh owner lewat `User.tetapManual`), **Feature 24** (kolom Tanggal Izin di sheet Per Karyawan), **Feature 25** (menu & halaman Laporan Izin, default periode 26–25). Belum di-deploy. |
 | v3 | 2026-08-01 | Feature 21 & 22 **di-deploy ke produksi** (commit `93d5da5`, READY di www.marmo.my.id) & diverifikasi di sana; catatan "belum di-deploy" di v2 dicabut. |
 | v2 | 2026-08-01 | **Feature 21** (catatan/pesan admin→karyawan, banner beranda + push notif + read receipt + tarik kembali) & **Feature 22** (export rekap izin ke .xlsx dengan rentang tanggal wajib; filter jenis diperluas ke semua jenis izin). Dependency baru `exceljs`. Kesalahan #17 dicatat di AGENTS.md. Akun contoh Budi Santoso dkk. dikonfirmasi sudah tidak ada di DB. Path repo di dokumen dibetulkan ke `~/projects/portal-karyawan`. |
 | v1 | 2026-07-30 | Baseline mulai pakai penomoran versi. Isi saat ini: Feature 18–20 (OpenClaw, admin ber-lokasi, ajukan izin admin) + perbaikan bug kontrak lewat tanggal. |

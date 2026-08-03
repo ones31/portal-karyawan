@@ -45,6 +45,7 @@ type Detail = {
   phone: string | null;
   lokasi: string | null;
   tanggalMasuk: string | null;
+  tetapManual: boolean;
   profil: (Record<string, string | null> & {
     tandaTangan: string | null;
     tandaTanganPada: string | null;
@@ -94,6 +95,7 @@ export default function EditKaryawanPage() {
     passwordBaru: "",
     mulaiKontrak: "",
     akhirKontrak: "",
+    tetapManual: false,
   });
   const [profilForm, setProfilForm] = useState<Record<string, string>>({});
   const [pesan, setPesan] = useState<{ jenis: "sukses" | "error"; teks: string } | null>(null);
@@ -143,6 +145,7 @@ export default function EditKaryawanPage() {
           passwordBaru: "",
           mulaiKontrak: karyawan.kontrak?.mulaiKontrak.slice(0, 10) ?? "",
           akhirKontrak: karyawan.kontrak?.akhirKontrak.slice(0, 10) ?? "",
+          tetapManual: karyawan.tetapManual,
         });
         const pf: Record<string, string> = {};
         for (const f of PROFIL_FIELDS) {
@@ -416,6 +419,37 @@ export default function EditKaryawanPage() {
             kontrak di sini berarti perpanjangan/penyesuaian masa berlaku.
           </p>
         )}
+
+        {/* Status karyawan tetap — hanya owner (SUPER_ADMIN) yang boleh mengubah.
+            Sejak 2026 tidak ada karyawan tetap otomatis, jadi ini satu-satunya
+            cara menetapkannya untuk karyawan angkatan baru. */}
+        <div className="sm:col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <label
+            className={`flex items-start gap-2 text-sm ${
+              superAdmin ? "cursor-pointer" : "cursor-not-allowed opacity-70"
+            }`}
+          >
+            <input
+              type="checkbox"
+              disabled={!superAdmin}
+              checked={form.tetapManual}
+              onChange={(e) =>
+                setForm({ ...form, tetapManual: e.target.checked })
+              }
+              className="mt-0.5"
+            />
+            <span>
+              <span className="font-medium">
+                Karyawan Tetap (ditetapkan owner)
+              </span>
+              <span className="mt-0.5 block text-xs text-slate-500">
+                {superAdmin
+                  ? "Karyawan yang mulai kerja tahun 2026 ke atas tidak pernah otomatis jadi tetap — kontraknya diperpanjang terus (3 bulan pertama, lalu 1 tahun berulang). Centang ini kalau owner memutuskan menjadikannya karyawan tetap. Karyawan tetap tidak lagi muncul di daftar Kontrak Segera Habis."
+                  : "Hanya owner yang dapat mengubah status ini."}
+              </span>
+            </span>
+          </label>
+        </div>
 
         <h2 className="sm:col-span-2 mt-2 border-t border-slate-200 pt-4 font-semibold">
           Data Pribadi Karyawan

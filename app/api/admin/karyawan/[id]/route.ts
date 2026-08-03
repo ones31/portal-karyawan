@@ -29,6 +29,7 @@ export async function GET(
       phone: true,
       lokasi: true,
       tanggalMasuk: true,
+      tetapManual: true,
       role: true,
       profil: true,
       kontrak: true,
@@ -86,7 +87,18 @@ export async function PATCH(
     mulaiKontrak,
     akhirKontrak,
     profil,
+    tetapManual,
   } = await req.json();
+
+  // Status "karyawan tetap" hanya boleh ditetapkan/dicabut owner (SUPER_ADMIN).
+  // Admin biasa yang mengirim field ini ditolak, bukan diabaikan diam-diam.
+  const ubahTetap = tetapManual !== undefined && !!tetapManual !== user.tetapManual;
+  if (ubahTetap && sesi.role !== "SUPER_ADMIN") {
+    return NextResponse.json(
+      { error: "Hanya owner yang dapat mengubah status karyawan tetap" },
+      { status: 403 }
+    );
+  }
 
   if (!nama) {
     return NextResponse.json({ error: "Nama wajib diisi" }, { status: 400 });
@@ -145,6 +157,11 @@ export async function PATCH(
       phone: phone || null,
       lokasi: lokasi || null,
       tanggalMasuk: tanggalMasuk ? new Date(tanggalMasuk) : null,
+      // Kontrak yang sudah ada SENGAJA tidak dihapus saat ditetapkan tetap —
+      // kontrak bertanda tangan adalah bukti hukum (lihat AGENTS.md #8).
+      // Karyawan tetap otomatis tidak muncul lagi di "Kontrak Segera Habis"
+      // lewat filterMasihKontrak().
+      ...(tetapManual !== undefined ? { tetapManual: !!tetapManual } : {}),
       ...(passwordBaru
         ? { password: await bcrypt.hash(passwordBaru, 10) }
         : {}),

@@ -15,6 +15,7 @@ type Karyawan = {
   phone: string | null;
   lokasi: string | null;
   tanggalMasuk: string | null;
+  tetapManual: boolean;
   tanggalLahir: string | null;
   profilLengkap: boolean;
   kontrak: {
@@ -356,7 +357,8 @@ export default function DaftarKaryawanPage() {
             <tbody>
               {tampil.map((k) => {
                 const sisa = k.kontrak ? sisaHari(k.kontrak.akhirKontrak) : null;
-                const tetap = statusMasaKerja(k.tanggalMasuk) === "TETAP";
+                const tetap =
+                  statusMasaKerja(k.tanggalMasuk, k.tetapManual) === "TETAP";
                 return (
                   <tr key={k.id} className="border-b border-slate-100">
                     <td className="py-3 pr-4">

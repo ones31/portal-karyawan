@@ -45,6 +45,11 @@ model User {
   lokasi    String?  // "Tegal Alur" | "Menceng" — lokasi kerja (karyawan)
   lokasiAkses String? // "Tegal Alur" | "Menceng" — untuk role ADMIN: lokasi yang boleh dilihat/dikelola. null/SUPER_ADMIN = tanpa batasan.
   tanggalMasuk DateTime? // waktu mulai bekerja di toko
+  // Status karyawan tetap yang DITETAPKAN MANUAL oleh owner (Feature 23).
+  // Karyawan yang mulai kerja tahun 2026 ke atas tidak pernah otomatis jadi
+  // tetap walau masa kerjanya lewat 3 tahun — kontraknya diperpanjang terus.
+  // Hanya owner (SUPER_ADMIN) yang boleh mengubah field ini.
+  tetapManual Boolean @default(false)
   role      Role     @default(KARYAWAN)
   statusAkun StatusAkun @default(AKTIF)
   createdAt DateTime @default(now())

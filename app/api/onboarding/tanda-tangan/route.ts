@@ -55,9 +55,10 @@ export async function POST(req: Request) {
       });
     }
 
-    if (statusMasaKerja(tanggalMasuk) === "TETAP") {
-      // Masa kerja > 3 tahun: sudah karyawan tetap, tidak terikat kontrak.
-      // Masa kontrak dikosongkan (hapus kontrak lama jika ada).
+    if (statusMasaKerja(tanggalMasuk, user.tetapManual) === "TETAP") {
+      // Karyawan tetap (karyawan lama > 3 tahun, atau ditetapkan manual oleh
+      // owner): tidak terikat kontrak, masa kontrak dikosongkan.
+      // Karyawan angkatan 2026 ke atas TIDAK pernah masuk cabang ini otomatis.
       if (user.kontrak) {
         await prisma.kontrak.delete({ where: { userId: user.id } });
       }
@@ -65,7 +66,8 @@ export async function POST(req: Request) {
       // statusMasaKerja sudah dicek != "TETAP" di atas, jadi hasil ini tidak null
       const { mulaiKontrak, akhirKontrak, isiKontrak } = hitungMasaKontrakOtomatis(
         tanggalMasuk,
-        sekarang
+        sekarang,
+        user.tetapManual
       )!;
 
       const dataTtd = {

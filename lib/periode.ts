@@ -19,6 +19,30 @@ export function periodeBerjalan(sekarang = new Date()) {
   };
 }
 
+// Periode siklus gajian (26–25) sebagai rentang tanggal INKLUSIF, siap dipakai
+// <input type="date">. offset 0 = periode berjalan, -1 = periode sebelumnya, dst.
+// Dipakai halaman Laporan Izin (Feature 25) yang default-nya periode berjalan.
+export function periodeSiklus(offset = 0, sekarang = new Date()) {
+  const berjalan = periodeBerjalan(sekarang);
+  const dari = new Date(
+    berjalan.gte.getFullYear(),
+    berjalan.gte.getMonth() + offset,
+    26
+  );
+  // tanggal 25 bulan berikutnya = sehari sebelum tanggal 26 berikutnya
+  const sampai = new Date(dari.getFullYear(), dari.getMonth() + 1, 25);
+  const fmt = (d: Date) =>
+    d.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+  return { dari, sampai, label: `${fmt(dari)} – ${fmt(sampai)}` };
+}
+
+// yyyy-mm-dd memakai waktu LOKAL (bukan toISOString yang menggeser ke UTC)
+export function isoTanggalLokal(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
+}
+
 // Rentang tanggal untuk filter periode izin.
 // periode: "bulan" (bulan ini) | "tahun" (tahun ini) | "custom" | lainnya = semua.
 // Untuk "custom", isi dari & sampai (yyyy-mm-dd), keduanya inklusif.

@@ -217,6 +217,33 @@ File berisi 2 sheet (dibuat di `lib/export-izin.ts` dengan `exceljs`): **"Rekap 
 Sekalian di feature ini, **filter jenis di halaman rekap diperluas** dari hanya Sakit/Lain-lain menjadi **Semua Jenis + keempat jenis izin**, sehingga halaman ini menjadi tempat melihat *seluruh* kumpulan pengajuan izin (tabel "Pengajuan Izin Terbaru" di dashboard menautkan ke sini lewat "Lihat semua & export Excel →"). Export mengikuti filter jenis yang aktif dan tetap ter-scope lokasi admin (Feature 19).
 **User yang memakai:** Admin, Owner
 
+#### Feature 23 — Tidak Ada Karyawan Tetap Otomatis untuk Angkatan 2026 ke Atas ✅
+**Deskripsi:** **Perubahan aturan bisnis.** Karyawan yang **mulai kerja tahun 2026 ke atas** tidak pernah otomatis menjadi karyawan tetap walau masa kerjanya melewati 3 tahun — **kontraknya diperpanjang terus**: **3 bulan pertama** (masa percobaan terhitung dari tanggal masuk), lalu **1 tahun berulang** tanpa batas.
+
+Status tetap untuk mereka hanya bisa **ditetapkan manual oleh owner** lewat centang **"Karyawan Tetap (ditetapkan owner)"** di halaman Edit Karyawan (field baru `User.tetapManual`). Admin biasa melihat centang itu dalam keadaan nonaktif; kalau tetap mencoba mengubahnya lewat API, ditolak **403** ("Hanya owner yang dapat mengubah status karyawan tetap").
+
+**Karyawan lama (masuk sebelum 2026) tidak terpengaruh** — aturan lama tetap berlaku: masa kerja > `BATAS_TAHUN_TETAP` (3) tahun = otomatis tetap. Konstanta & logikanya dipusatkan di `lib/masa-kerja.ts` (`TAHUN_TANPA_TETAP_OTOMATIS` = 2026, `statusMasaKerja(tanggalMasuk, tetapManual)`, `filterMasihKontrak()` untuk query Prisma). Karyawan tetap otomatis hilang dari daftar & hitungan **Kontrak Segera Habis**.
+
+Catatan: menetapkan seseorang jadi tetap **tidak menghapus kontraknya yang sudah ada** — kontrak bertanda tangan adalah bukti hukum (AGENTS.md #8). Kontraknya hanya berhenti ditagih perpanjangan.
+**User yang memakai:** Owner (menetapkan), Admin (melihat), Karyawan (status di beranda)
+
+#### Feature 24 — Tanggal Izin di Sheet "Per Karyawan" File Export ✅
+**Deskripsi:** Sheet **"Per Karyawan"** pada file export `.xlsx` (Feature 22) ditambah kolom **"Tanggal Izin"** berisi daftar tanggal seluruh izin karyawan tsb, diurutkan kronologis: `"10 Jul 2026, 15 Jul 2026, 17 Jul 2026"`. Izin yang lebih dari sehari ditulis sebagai rentang: `"30 Jul 2026 – 31 Jul 2026"`. Jadi rekap per karyawan tidak lagi hanya menampilkan jumlah, tapi juga kapan saja izinnya.
+**User yang memakai:** Admin, Owner
+
+#### Feature 25 — Halaman Laporan Izin (Menu Baru) ✅
+**Deskripsi:** Menu navbar baru **"Laporan Izin"** (`/admin/laporan-izin`), diletakkan **tepat setelah "Daftar Karyawan"**. Menampilkan **data yang sama persis dengan isi file export Excel**, tapi langsung di layar.
+
+- **Default menampilkan periode gajian berjalan: tanggal 26 bulan ini sampai 25 bulan berikutnya** (`periodeSiklus()` di `lib/periode.ts`)
+- Tombol **← Periode Sebelumnya / Periode Berikutnya →** untuk menggeser siklus, plus **"Kembali ke periode berjalan"**
+- Input **Dari/Sampai Tanggal** kalau butuh rentang bebas di luar siklus
+- Dua tampilan: **Rincian** (setara sheet "Rekap Izin": nama, lokasi, jenis, tanggal, jumlah hari, alasan, status, surat dokter) dan **Per Karyawan** (setara sheet "Per Karyawan" termasuk kolom Tanggal Izin dari Feature 24)
+- Filter jenis izin (Semua Jenis + keempat jenis) dan tombol **Download Excel** yang mengikuti periode & filter yang sedang tampil
+- Ringkasan total: `"4 karyawan · 5 pengajuan · 6 hari total"`
+
+Datanya diambil dari `GET /api/admin/rekap-izin` yang sudah ada (ter-scope lokasi sesuai Feature 19), jadi tidak ada endpoint baru.
+**User yang memakai:** Admin, Owner
+
 #### Feature 17 — Ranking Persentase Kehadiran per Lokasi di Dashboard ✅
 **Deskripsi:** Dashboard admin/owner menampilkan dua tabel **"Tingkat Kehadiran"** terpisah per lokasi (Tegal Alur & Menceng), berisi semua karyawan aktif dengan lokasi terisi, diurutkan **dari persentase kehadiran terendah ke tertinggi**. Memakai formula & periode yang sama dengan Feature 14 (periode berjalan 26–25, izin DITOLAK tidak mengurangi), dipusatkan di `lib/kehadiran.ts` (`hitungPersenKehadiran`, `warnaKehadiran`) supaya beranda karyawan & dashboard admin memakai satu sumber logika yang sama. Query di `app/api/admin/dashboard/route.ts` menghindari N+1 dengan satu `findMany` izin dikelompokkan per user di JS.
 **User yang memakai:** Admin, Owner
@@ -249,7 +276,8 @@ Sekalian di feature ini, **filter jenis di halaman rekap diperluas** dari hanya 
 | statusAkun | `MENUNGGU` / `AKTIF` / `DITOLAK`, default `AKTIF`. Pendaftaran mandiri mulai `MENUNGGU` sampai admin approve (Feature 16); `DITOLAK` memblokir login |
 | lokasi | dropdown: `Tegal Alur` dan `Menceng` (wajib untuk karyawan) |
 | lokasiAkses | untuk role `ADMIN`: lokasi yang boleh dilihat/dikelola (Feature 19). Wajib diisi saat owner membuat akun admin. `null`/`SUPER_ADMIN` = tanpa batasan |
-| tanggal_masuk | waktu mulai bekerja di toko (dari spreadsheet "Waktu Masuk") |
+| tanggal_masuk | waktu mulai bekerja di toko (dari spreadsheet "Waktu Masuk"). Menentukan aturan kontrak: masuk **2026 ke atas** = tidak ada tetap otomatis (Feature 23) |
+| tetapManual | `true` = karyawan tetap yang **ditetapkan owner** (Feature 23). Default `false`. Hanya `SUPER_ADMIN` yang boleh mengubah |
 | phone | opsional |
 | email | opsional, tidak dipakai login |
 | created_at | |
