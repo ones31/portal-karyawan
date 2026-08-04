@@ -1,6 +1,6 @@
 # Ringkasan Sesi — Portal Toko Marmo
 
-**Versi: v6** — diperbarui 2026-08-04
+**Versi: v7** — diperbarui 2026-08-04
 
 > Ditulis untuk melanjutkan pekerjaan di sesi Claude Code baru. Baca ini + `docs/PRD.md` (kebenaran tunggal fitur, sekarang sampai **Feature 26**) + `AGENTS.md` (manual operasi & aturan kerja, sekarang 17 kesalahan umum) sebelum lanjut.
 
@@ -8,9 +8,7 @@
 
 **Live di produksi:** https://portal-karyawan-theta.vercel.app **dan** domain custom **https://www.marmo.my.id** (alias ke deployment yang sama). Database **PostgreSQL (Neon)** — dev lokal dan produksi **berbagi database yang sama persis**, jadi perubahan schema/data lokal langsung berlaku di produksi juga. File surat dokter di **Vercel Blob**.
 
-**Deploy terakhir:** commit `0b5b0a0` ("aturan kontrak angkatan 2026, halaman Laporan Izin, tanggal izin di export") — 3 Agu 2026, status READY di kedua domain. Diverifikasi di produksi: login 200, `/admin/laporan-izin` 200, export `.xlsx` termasuk kolom Tanggal Izin, kolom `tetapManual` nyambung ke Neon. Deployment dicek lewat `GET /v6/deployments/{id}/files` — **tidak ada `.env`/secret yang ikut ter-upload**.
-
-⚠️ **Feature 26 (di bawah) BELUM di-deploy** — selesai & diverifikasi lokal, produksi masih di `0b5b0a0`.
+**Deploy terakhir:** commit `4036432` ("jenis izin Setengah Hari + dikecualikan dari persentase kehadiran") — 4 Agu 2026, status READY di kedua domain. Diverifikasi di produksi: SETENGAH_HARI rentang 2 hari ditolak 400, satu tanggal disetujui → kehadiran tetap 100%. Deployment dicek lewat `GET /v6/deployments/{id}/files` — **tidak ada `.env`/secret yang ikut ter-upload**.
 
 Catatan: schema `Catatan` ter-migrate ke Neon yang **dipakai bersama dev & produksi**, jadi perubahan schema lokal langsung berlaku di produksi.
 
@@ -149,6 +147,7 @@ Setiap kali file ini diperbarui: naikkan **Versi** di judul +1, lalu tambah satu
 
 | Versi | Tanggal | Ringkasan perubahan |
 |---|---|---|
+| v7 | 2026-08-04 | Feature 26 (+ susulan pengecualian kehadiran) **di-deploy ke produksi** (commit `4036432`, READY, diverifikasi langsung di www.marmo.my.id). |
 | v6 | 2026-08-04 | Susulan Feature 26: Izin Setengah Hari dikecualikan PENUH dari persentase kehadiran (bukan 0,5 hari) via `JENIS_TIDAK_HITUNG_KEHADIRAN`. Belum di-deploy. |
 | v5 | 2026-08-04 | **Feature 26** (jenis izin baru Setengah Hari, 1 tanggal, di bawah Izin Lain-lain, otomatis ikut Laporan Izin & export). Belum di-deploy. |
 | v4 | 2026-08-03 | **Feature 23** (aturan kontrak berubah: angkatan 2026+ tidak ada tetap otomatis, hanya manual oleh owner lewat `User.tetapManual`), **Feature 24** (kolom Tanggal Izin di sheet Per Karyawan), **Feature 25** (menu & halaman Laporan Izin, default periode 26–25). Di-deploy `0b5b0a0` (3 Agu 2026). |
