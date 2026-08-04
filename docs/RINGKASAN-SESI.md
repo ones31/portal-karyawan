@@ -1,20 +1,30 @@
 # Ringkasan Sesi — Portal Toko Marmo
 
-**Versi: v4** — diperbarui 2026-08-03
+**Versi: v6** — diperbarui 2026-08-04
 
-> Ditulis untuk melanjutkan pekerjaan di sesi Claude Code baru. Baca ini + `docs/PRD.md` (kebenaran tunggal fitur, sekarang sampai **Feature 25**) + `AGENTS.md` (manual operasi & aturan kerja, sekarang 17 kesalahan umum) sebelum lanjut.
+> Ditulis untuk melanjutkan pekerjaan di sesi Claude Code baru. Baca ini + `docs/PRD.md` (kebenaran tunggal fitur, sekarang sampai **Feature 26**) + `AGENTS.md` (manual operasi & aturan kerja, sekarang 17 kesalahan umum) sebelum lanjut.
 
 ## Status saat ini
 
 **Live di produksi:** https://portal-karyawan-theta.vercel.app **dan** domain custom **https://www.marmo.my.id** (alias ke deployment yang sama). Database **PostgreSQL (Neon)** — dev lokal dan produksi **berbagi database yang sama persis**, jadi perubahan schema/data lokal langsung berlaku di produksi juga. File surat dokter di **Vercel Blob**.
 
-**Deploy terakhir:** commit `93d5da5` ("catatan admin ke karyawan + export rekap izin ke Excel") — 1 Agu 2026, status READY di kedua domain. Diverifikasi di produksi: login 200, `/admin/catatan` & `/admin/rekap-izin` 200, export `.xlsx` benar-benar terunduh (8.7 KB, isi & rentang tanggal dicek), kasus negatif 400. Deployment juga dicek lewat `GET /v6/deployments/{id}/files` — **tidak ada `.env`/secret yang ikut ter-upload**.
+**Deploy terakhir:** commit `0b5b0a0` ("aturan kontrak angkatan 2026, halaman Laporan Izin, tanggal izin di export") — 3 Agu 2026, status READY di kedua domain. Diverifikasi di produksi: login 200, `/admin/laporan-izin` 200, export `.xlsx` termasuk kolom Tanggal Izin, kolom `tetapManual` nyambung ke Neon. Deployment dicek lewat `GET /v6/deployments/{id}/files` — **tidak ada `.env`/secret yang ikut ter-upload**.
+
+⚠️ **Feature 26 (di bawah) BELUM di-deploy** — selesai & diverifikasi lokal, produksi masih di `0b5b0a0`.
 
 Catatan: schema `Catatan` ter-migrate ke Neon yang **dipakai bersama dev & produksi**, jadi perubahan schema lokal langsung berlaku di produksi.
 
-## Fitur terbaru (Feature 23–25 di PRD) — sesi 3 Agu 2026
+## Fitur terbaru (Feature 26 di PRD) — sesi 4 Agu 2026
 
-⚠️ **BELUM di-deploy.** Sudah selesai & diverifikasi lokal, produksi masih di `f071542`.
+### Feature 26 — Jenis izin baru: Setengah Hari
+Dropdown "Jenis Pengajuan" (karyawan & admin) sekarang punya **Izin Setengah Hari**, diletakkan **tepat di bawah Izin Lain-lain**: SAKIT → LAINNYA → **SETENGAH_HARI** → MENIKAH → TUGAS_NEGARA.
+- **Hanya 1 tanggal** — pola sama dengan Tugas Negara. Konstanta baru `JENIS_SATU_TANGGAL` di `lib/izin.ts` mendaftar keduanya; UI otomatis tampil 1 input tanggal untuk jenis apa pun yang ada di daftar itu
+- Server (`lib/pengajuan-izin.ts`, `buatIzin()`) menolak **400** kalau tetap dikirim sebagai rentang — bukan cuma dicegah UI
+- Alasan **wajib diisi** (beda dari Tugas Negara yang opsional)
+- **Otomatis ikut** di filter Laporan Izin & export Excel — kedua tempat itu sudah generik lewat `JENIS_IZIN`/`LABEL_JENIS_IZIN`, tidak ada perubahan tambahan di sana
+- **Susulan sesi ini juga:** Izin Setengah Hari **TIDAK dihitung sama sekali** dalam persentase kehadiran (bukan 0,5 hari — dikecualikan penuh, keputusan user setelah sempat dibiarkan ikut terhitung 1 hari absen). Konstanta `JENIS_TIDAK_HITUNG_KEHADIRAN` di `lib/izin.ts`, disaring di `where` Prisma pada kedua query kehadiran (`app/karyawan/page.tsx` & `app/api/admin/dashboard/route.ts`) — bukan di dalam `hitungPersenKehadiran()` sendiri (fungsi itu tidak tahu jenis izin). Diuji: Setengah Hari disetujui → kehadiran tetap 100%; kontrol Izin Sakit 3 hari → turun ke 90% seperti biasa, konsisten di beranda karyawan & dashboard admin.
+
+## Fitur sesi sebelumnya (Feature 23–25 di PRD) — 3 Agu 2026, sudah di-deploy
 
 ### Feature 23 — ATURAN BISNIS BERUBAH: tidak ada karyawan tetap otomatis untuk angkatan 2026+
 Ini perubahan aturan, bukan sekadar fitur. **Baca sebelum menyentuh apa pun soal kontrak.**
@@ -123,7 +133,7 @@ Kalau schema Prisma berubah: `npx prisma migrate dev --name <nama>` lalu **resta
 
 ## Dokumen rujukan di repo
 
-- **`docs/PRD.md`** — 25 fitur ✅, data model (termasuk `lokasiAkses`, `tetapManual` & entity `Catatan`), fase project. **Selalu update setiap fitur baru.**
+- **`docs/PRD.md`** — 26 fitur ✅, data model (termasuk `lokasiAkses`, `tetapManual` & entity `Catatan`), fase project. **Selalu update setiap fitur baru.**
 - **`AGENTS.md`** — manual operasi: stack terkunci, konstanta bisnis per file `lib/`, **17 kesalahan umum** + aturan penangkalnya, kapan harus berhenti & bertanya.
 - **`.claude/skills/`** — `verifikasi-portal`, `tambah-fitur-portal`, `impor-karyawan`.
 
@@ -139,7 +149,9 @@ Setiap kali file ini diperbarui: naikkan **Versi** di judul +1, lalu tambah satu
 
 | Versi | Tanggal | Ringkasan perubahan |
 |---|---|---|
-| v4 | 2026-08-03 | **Feature 23** (aturan kontrak berubah: angkatan 2026+ tidak ada tetap otomatis, hanya manual oleh owner lewat `User.tetapManual`), **Feature 24** (kolom Tanggal Izin di sheet Per Karyawan), **Feature 25** (menu & halaman Laporan Izin, default periode 26–25). Belum di-deploy. |
+| v6 | 2026-08-04 | Susulan Feature 26: Izin Setengah Hari dikecualikan PENUH dari persentase kehadiran (bukan 0,5 hari) via `JENIS_TIDAK_HITUNG_KEHADIRAN`. Belum di-deploy. |
+| v5 | 2026-08-04 | **Feature 26** (jenis izin baru Setengah Hari, 1 tanggal, di bawah Izin Lain-lain, otomatis ikut Laporan Izin & export). Belum di-deploy. |
+| v4 | 2026-08-03 | **Feature 23** (aturan kontrak berubah: angkatan 2026+ tidak ada tetap otomatis, hanya manual oleh owner lewat `User.tetapManual`), **Feature 24** (kolom Tanggal Izin di sheet Per Karyawan), **Feature 25** (menu & halaman Laporan Izin, default periode 26–25). Di-deploy `0b5b0a0` (3 Agu 2026). |
 | v3 | 2026-08-01 | Feature 21 & 22 **di-deploy ke produksi** (commit `93d5da5`, READY di www.marmo.my.id) & diverifikasi di sana; catatan "belum di-deploy" di v2 dicabut. |
 | v2 | 2026-08-01 | **Feature 21** (catatan/pesan admin→karyawan, banner beranda + push notif + read receipt + tarik kembali) & **Feature 22** (export rekap izin ke .xlsx dengan rentang tanggal wajib; filter jenis diperluas ke semua jenis izin). Dependency baru `exceljs`. Kesalahan #17 dicatat di AGENTS.md. Akun contoh Budi Santoso dkk. dikonfirmasi sudah tidak ada di DB. Path repo di dokumen dibetulkan ke `~/projects/portal-karyawan`. |
 | v1 | 2026-07-30 | Baseline mulai pakai penomoran versi. Isi saat ini: Feature 18–20 (OpenClaw, admin ber-lokasi, ajukan izin admin) + perbaikan bug kontrak lewat tanggal. |

@@ -16,6 +16,7 @@ enum Role {
 enum JenisIzin {
   SAKIT
   LAINNYA
+  SETENGAH_HARI
   TUGAS_NEGARA
   MENIKAH
 }

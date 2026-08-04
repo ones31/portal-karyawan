@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { LABEL_JENIS_IZIN } from "@/lib/izin";
+import { LABEL_JENIS_IZIN, type JenisIzin } from "@/lib/izin";
 import { warnaKehadiran } from "@/lib/kehadiran";
 
 type Statistik = {
@@ -25,7 +25,7 @@ type Kehadiran = {
 
 type IzinTerbaru = {
   id: string;
-  jenis: "SAKIT" | "LAINNYA" | "TUGAS_NEGARA" | "MENIKAH";
+  jenis: JenisIzin;
   tanggalMulai: string;
   tanggalAkhir: string;
   alasan: string;

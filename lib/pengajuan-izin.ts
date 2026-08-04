@@ -2,7 +2,14 @@ import { randomUUID } from "crypto";
 import { prisma } from "./prisma";
 import { MAKS_UKURAN_SURAT, TIPE_SURAT, simpanSurat } from "./surat-dokter";
 import { kirimNotifKeAdmin } from "./push";
-import { LABEL_JENIS_IZIN, MAKS_HARI_MENIKAH, jumlahHari, type JenisIzin } from "./izin";
+import {
+  JENIS_IZIN,
+  JENIS_SATU_TANGGAL,
+  LABEL_JENIS_IZIN,
+  MAKS_HARI_MENIKAH,
+  jumlahHari,
+  type JenisIzin,
+} from "./izin";
 
 // Server-only (pakai fs/prisma) — SENGAJA dipisah dari lib/izin.ts supaya
 // konstanta di sana tetap aman diimpor komponen client (app/karyawan/izin,
@@ -38,7 +45,7 @@ export async function buatIzin(input: BuatIzinInput): Promise<HasilBuatIzin> {
   ) {
     return { ok: false, status: 400, pesan: "Semua kolom wajib diisi" };
   }
-  if (!["SAKIT", "LAINNYA", "TUGAS_NEGARA", "MENIKAH"].includes(jenis)) {
+  if (!(JENIS_IZIN as readonly string[]).includes(jenis)) {
     return { ok: false, status: 400, pesan: "Jenis izin tidak valid" };
   }
   if (new Date(tanggalAkhir) < new Date(tanggalMulai)) {
@@ -46,6 +53,18 @@ export async function buatIzin(input: BuatIzinInput): Promise<HasilBuatIzin> {
       ok: false,
       status: 400,
       pesan: "Tanggal akhir tidak boleh sebelum tanggal mulai",
+    };
+  }
+  // Pertahanan sisi server: jenis "satu tanggal" (Tugas Negara, Setengah Hari)
+  // tidak boleh diajukan sebagai rentang, walau UI sudah memaksa satu input.
+  if (
+    JENIS_SATU_TANGGAL.includes(jenis as JenisIzin) &&
+    tanggalMulai !== tanggalAkhir
+  ) {
+    return {
+      ok: false,
+      status: 400,
+      pesan: `${LABEL_JENIS_IZIN[jenis as JenisIzin]} hanya berlaku untuk 1 tanggal, tidak bisa rentang`,
     };
   }
   if (jenis === "MENIKAH") {

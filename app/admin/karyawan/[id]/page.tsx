@@ -3,7 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { LABEL_JENIS_IZIN, MAKS_HARI_MENIKAH, jumlahHari, type JenisIzin } from "@/lib/izin";
+import {
+  JENIS_SATU_TANGGAL,
+  LABEL_JENIS_IZIN,
+  MAKS_HARI_MENIKAH,
+  jumlahHari,
+  type JenisIzin,
+} from "@/lib/izin";
 
 const DAFTAR_LOKASI = ["Tegal Alur", "Menceng"];
 
@@ -215,7 +221,9 @@ export default function EditKaryawanPage() {
       setErrorIzin("Silakan pilih file surat dokter terlebih dahulu.");
       return;
     }
-    const akhir = jenisIzinBaru === "TUGAS_NEGARA" ? tanggalMulaiBaru : tanggalAkhirBaru;
+    const akhir = JENIS_SATU_TANGGAL.includes(jenisIzinBaru)
+      ? tanggalMulaiBaru
+      : tanggalAkhirBaru;
     if (
       jenisIzinBaru === "MENIKAH" &&
       tanggalMulaiBaru &&
@@ -564,6 +572,7 @@ export default function EditKaryawanPage() {
               >
                 <option value="SAKIT">Izin Sakit</option>
                 <option value="LAINNYA">Izin Lain-lain</option>
+                <option value="SETENGAH_HARI">Izin Setengah Hari</option>
                 <option value="MENIKAH">Izin Menikah</option>
                 <option value="TUGAS_NEGARA">Tugas Negara</option>
               </select>
@@ -613,7 +622,7 @@ export default function EditKaryawanPage() {
               </div>
             )}
 
-            {jenisIzinBaru === "TUGAS_NEGARA" ? (
+            {JENIS_SATU_TANGGAL.includes(jenisIzinBaru) ? (
               <div>
                 <label className="block text-sm font-medium">Tanggal</label>
                 <input

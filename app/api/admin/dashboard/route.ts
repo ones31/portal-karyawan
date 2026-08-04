@@ -6,6 +6,7 @@ import { BATAS_HARI_KONTRAK_HABIS } from "@/lib/kontrak";
 import { filterMasihKontrak } from "@/lib/masa-kerja";
 import { DAFTAR_LOKASI } from "@/lib/lokasi";
 import { hitungPersenKehadiran } from "@/lib/kehadiran";
+import { JENIS_TIDAK_HITUNG_KEHADIRAN } from "@/lib/izin";
 
 export async function GET(req: Request) {
   const sesi = await sesiSaatIni();
@@ -74,10 +75,13 @@ export async function GET(req: Request) {
       where: lokasiFilter,
       select: { id: true, nama: true, lokasi: true },
     }),
+    // Jenis yang dikecualikan dari kehadiran (Setengah Hari) disaring di sini
+    // juga — lihat JENIS_TIDAK_HITUNG_KEHADIRAN di lib/izin.ts.
     prisma.izin.findMany({
       where: {
         user: lokasiFilter,
         status: { not: "DITOLAK" },
+        jenis: { notIn: [...JENIS_TIDAK_HITUNG_KEHADIRAN] },
         tanggalMulai: { lt: periodeKehadiran.lt },
         tanggalAkhir: { gte: periodeKehadiran.gte },
       },

@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { LABEL_JENIS_IZIN, MAKS_HARI_MENIKAH, jumlahHari, type JenisIzin } from "@/lib/izin";
+import {
+  JENIS_SATU_TANGGAL,
+  LABEL_JENIS_IZIN,
+  MAKS_HARI_MENIKAH,
+  jumlahHari,
+  type JenisIzin,
+} from "@/lib/izin";
 
 type Karyawan = {
   id: string;
@@ -48,7 +54,7 @@ export default function AjukanIzinAdminPage() {
       setError("Silakan pilih file surat dokter terlebih dahulu.");
       return;
     }
-    const akhir = jenis === "TUGAS_NEGARA" ? tanggalMulai : tanggalAkhir;
+    const akhir = JENIS_SATU_TANGGAL.includes(jenis) ? tanggalMulai : tanggalAkhir;
     if (
       jenis === "MENIKAH" &&
       tanggalMulai &&
@@ -179,7 +185,7 @@ export default function AjukanIzinAdminPage() {
           </div>
         )}
 
-        {jenis === "TUGAS_NEGARA" ? (
+        {JENIS_SATU_TANGGAL.includes(jenis) ? (
           <div>
             <label className="block text-sm font-medium">Tanggal</label>
             <input

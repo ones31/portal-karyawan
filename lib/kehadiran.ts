@@ -5,6 +5,10 @@ export type IzinRentang = { tanggalMulai: Date; tanggalAkhir: Date };
 // Persentase kehadiran periode berjalan: mulai 100%, dikurangi proporsi hari
 // izin (izin DITOLAK tidak mengurangi; rentang izin dipotong ke periode).
 // Formula sama dipakai di beranda karyawan (per-orang) & dashboard admin (semua karyawan).
+// PENTING: fungsi ini menghitung SEMUA baris `izinPeriode` yang diberikan tanpa
+// tahu jenisnya (tipe IzinRentang tidak punya field jenis) — pemanggil WAJIB
+// menyaring jenis yang dikecualikan (JENIS_TIDAK_HITUNG_KEHADIRAN di lib/izin.ts,
+// saat ini: Setengah Hari) lewat `where` Prisma SEBELUM data sampai ke sini.
 export function hitungPersenKehadiran(
   izinPeriode: IzinRentang[],
   periode: ReturnType<typeof periodeBerjalan>

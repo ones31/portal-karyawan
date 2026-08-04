@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "JenisIzin" ADD VALUE 'SETENGAH_HARI';

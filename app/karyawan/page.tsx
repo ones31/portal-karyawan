@@ -2,7 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { sesiSaatIni } from "@/lib/auth";
 import { statusMasaKerja } from "@/lib/masa-kerja";
-import { JENIS_IZIN, LABEL_JENIS_IZIN } from "@/lib/izin";
+import { JENIS_IZIN, JENIS_TIDAK_HITUNG_KEHADIRAN, LABEL_JENIS_IZIN } from "@/lib/izin";
 import { periodeBerjalan } from "@/lib/periode";
 import { hitungPersenKehadiran, warnaKehadiran } from "@/lib/kehadiran";
 import TombolTandaiDibaca from "@/components/TombolTandaiDibaca";
@@ -31,11 +31,14 @@ export default async function BerandaKaryawan() {
         },
         _count: true,
       }),
-      // Untuk hitung kehadiran: izin yang beririsan dengan periode & tidak ditolak
+      // Untuk hitung kehadiran: izin yang beririsan dengan periode, tidak
+      // ditolak, dan bukan jenis yang dikecualikan (Setengah Hari — lihat
+      // JENIS_TIDAK_HITUNG_KEHADIRAN di lib/izin.ts)
       prisma.izin.findMany({
         where: {
           userId: sesi.userId,
           status: { not: "DITOLAK" },
+          jenis: { notIn: [...JENIS_TIDAK_HITUNG_KEHADIRAN] },
           tanggalMulai: { lt: periode.lt },
           tanggalAkhir: { gte: periode.gte },
         },

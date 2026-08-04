@@ -1,11 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { LABEL_JENIS_IZIN, MAKS_HARI_MENIKAH, jumlahHari } from "@/lib/izin";
+import {
+  JENIS_SATU_TANGGAL,
+  LABEL_JENIS_IZIN,
+  MAKS_HARI_MENIKAH,
+  jumlahHari,
+  type JenisIzin,
+} from "@/lib/izin";
 
 type Izin = {
   id: string;
-  jenis: "SAKIT" | "LAINNYA" | "TUGAS_NEGARA";
+  jenis: JenisIzin;
   tanggalMulai: string;
   tanggalAkhir: string;
   alasan: string;
@@ -46,10 +52,8 @@ function formatTanggal(s: string) {
 export default function IzinPage() {
   const [riwayat, setRiwayat] = useState<Riwayat[]>([]);
 
-  // Jenis pengajuan: SAKIT / LAINNYA / TUGAS_NEGARA / MENIKAH / TUKAR (tukar libur)
-  const [jenis, setJenis] = useState<
-    "SAKIT" | "LAINNYA" | "TUGAS_NEGARA" | "MENIKAH" | "TUKAR"
-  >("SAKIT");
+  // Jenis pengajuan: semua JenisIzin (lib/izin.ts) + TUKAR (tukar libur)
+  const [jenis, setJenis] = useState<JenisIzin | "TUKAR">("SAKIT");
 
   // Field izin sakit / lain-lain
   const [tipeSakit, setTipeSakit] = useState<"TANPA" | "DENGAN">("TANPA");
@@ -131,8 +135,10 @@ export default function IzinPage() {
       setError("Silakan pilih file surat dokter terlebih dahulu.");
       return;
     }
-    // Tugas Negara hanya 1 hari: tanggal akhir = tanggal mulai
-    const akhir = jenis === "TUGAS_NEGARA" ? tanggalMulai : tanggalAkhir;
+    // Jenis "satu tanggal" (Tugas Negara, Setengah Hari): tanggal akhir = tanggal mulai
+    const akhir = JENIS_SATU_TANGGAL.includes(jenis as JenisIzin)
+      ? tanggalMulai
+      : tanggalAkhir;
     if (
       jenis === "MENIKAH" &&
       jumlahHari(tanggalMulai, akhir) > MAKS_HARI_MENIKAH
@@ -181,20 +187,12 @@ export default function IzinPage() {
             <label className="block text-sm font-medium">Jenis Pengajuan</label>
             <select
               value={jenis}
-              onChange={(e) =>
-                setJenis(
-                  e.target.value as
-                    | "SAKIT"
-                    | "LAINNYA"
-                    | "TUGAS_NEGARA"
-                    | "MENIKAH"
-                    | "TUKAR"
-                )
-              }
+              onChange={(e) => setJenis(e.target.value as JenisIzin | "TUKAR")}
               className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
             >
               <option value="SAKIT">Izin Sakit</option>
               <option value="LAINNYA">Izin Lain-lain</option>
+              <option value="SETENGAH_HARI">Izin Setengah Hari</option>
               <option value="MENIKAH">Izin Menikah</option>
               <option value="TUGAS_NEGARA">Tugas Negara</option>
               <option value="TUKAR">Tukar Libur</option>
@@ -320,7 +318,7 @@ export default function IzinPage() {
                 </p>
               )}
 
-              {jenis === "TUGAS_NEGARA" ? (
+              {JENIS_SATU_TANGGAL.includes(jenis as JenisIzin) ? (
                 <div>
                   <label className="block text-sm font-medium">Tanggal</label>
                   <input

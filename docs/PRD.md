@@ -244,6 +244,16 @@ Catatan: menetapkan seseorang jadi tetap **tidak menghapus kontraknya yang sudah
 Datanya diambil dari `GET /api/admin/rekap-izin` yang sudah ada (ter-scope lokasi sesuai Feature 19), jadi tidak ada endpoint baru.
 **User yang memakai:** Admin, Owner
 
+#### Feature 26 — Jenis Izin Baru: Izin Setengah Hari ✅
+**Deskripsi:** Jenis izin ke-5, muncul di dropdown "Jenis Pengajuan" **tepat di bawah Izin Lain-lain** (SAKIT → LAINNYA → **SETENGAH_HARI** → MENIKAH → TUGAS_NEGARA — urutan ini di `lib/izin.ts`, dipakai konsisten di semua dropdown).
+
+**Hanya 1 tanggal** (tidak bisa rentang lebih dari sehari) — pola yang sama dengan Tugas Negara. Konstanta baru `JENIS_SATU_TANGGAL` di `lib/izin.ts` mendaftar kedua jenis ini; UI menampilkan satu input "Tanggal" (bukan Dari/Sampai), dan `lib/pengajuan-izin.ts` (`buatIzin()`) menolak **400** kalau tetap dikirim sebagai rentang (`tanggalMulai !== tanggalAkhir`) — pertahanan sisi server, bukan cuma UI. Alasan tetap **wajib diisi** (beda dari Tugas Negara yang opsional).
+
+Otomatis ikut di semua tempat yang sudah generik lewat `JENIS_IZIN`/`LABEL_JENIS_IZIN`: dropdown Ajukan Izin (karyawan & admin), filter jenis di halaman **Laporan Izin** (Feature 25), dan **export Excel** (Feature 22/24) — tidak ada endpoint atau logika baru yang perlu ditambah di tempat-tempat itu.
+
+**Izin Setengah Hari TIDAK dihitung sama sekali dalam persentase kehadiran** (keputusan user, bukan dihitung 0,5 hari) — kedua query yang memberi data ke `hitungPersenKehadiran()` (beranda karyawan di `app/karyawan/page.tsx` dan dashboard admin di `app/api/admin/dashboard/route.ts`) menyaring `jenis: { notIn: JENIS_TIDAK_HITUNG_KEHADIRAN }` di `where` Prisma-nya. Konstanta itu ada di `lib/izin.ts` — kalau nanti ada jenis izin lain yang perlu dikecualikan juga, cukup tambah ke daftar itu, jangan tulis ulang filternya di tempat lain. Diverifikasi: karyawan uji dengan Izin Setengah Hari disetujui tetap 100% kehadiran; ditambah Izin Sakit 3 hari (kontrol) turun ke 90% seperti biasa, konsisten di beranda karyawan maupun dashboard admin.
+**User yang memakai:** Karyawan, Admin, Owner
+
 #### Feature 17 — Ranking Persentase Kehadiran per Lokasi di Dashboard ✅
 **Deskripsi:** Dashboard admin/owner menampilkan dua tabel **"Tingkat Kehadiran"** terpisah per lokasi (Tegal Alur & Menceng), berisi semua karyawan aktif dengan lokasi terisi, diurutkan **dari persentase kehadiran terendah ke tertinggi**. Memakai formula & periode yang sama dengan Feature 14 (periode berjalan 26–25, izin DITOLAK tidak mengurangi), dipusatkan di `lib/kehadiran.ts` (`hitungPersenKehadiran`, `warnaKehadiran`) supaya beranda karyawan & dashboard admin memakai satu sumber logika yang sama. Query di `app/api/admin/dashboard/route.ts` menghindari N+1 dengan satu `findMany` izin dikelompokkan per user di JS.
 **User yang memakai:** Admin, Owner
@@ -326,7 +336,7 @@ Datanya diambil dari `GET /api/admin/rekap-izin` yang sudah ada (ter-scope lokas
 
 | Field | Keterangan |
 |---|---|
-| jenis | `SAKIT` / `LAINNYA` |
+| jenis | `SAKIT` / `LAINNYA` / `SETENGAH_HARI` / `MENIKAH` / `TUGAS_NEGARA` — `SETENGAH_HARI` & `TUGAS_NEGARA` hanya 1 tanggal (`tanggalMulai == tanggalAkhir`, lihat `JENIS_SATU_TANGGAL`) |
 | tanggal_mulai, tanggal_akhir | |
 | alasan | |
 | surat_dokter | file upload (PDF/JPG/PNG maks 5 MB), **opsional** (tidak ada validasi wajib berdasar jumlah hari). Hanya bisa dibuka pemilik izin dan admin/owner |
