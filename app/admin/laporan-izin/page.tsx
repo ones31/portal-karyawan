@@ -11,6 +11,7 @@ type IzinRekap = {
   alasan: string;
   status: "MENUNGGU" | "DISETUJUI" | "DITOLAK";
   suratDokter: string | null;
+  createdAt: string;
 };
 
 type RekapKaryawan = {
@@ -55,6 +56,15 @@ function rentangIzin(mulai: string, akhir: string) {
   const a = formatTanggal(mulai);
   const b = formatTanggal(akhir);
   return a === b ? a : `${a} – ${b}`;
+}
+
+// Kapan karyawan MENGAJUKAN izinnya di webapp (bukan tanggal izinnya) — dengan
+// jam, format "15 Jul 2026, 09.14"
+function formatWaktuInput(s: string) {
+  const d = new Date(s);
+  const jam = String(d.getHours()).padStart(2, "0");
+  const menit = String(d.getMinutes()).padStart(2, "0");
+  return `${formatTanggal(d)}, ${jam}.${menit}`;
 }
 
 export default function LaporanIzinPage() {
@@ -348,7 +358,7 @@ export default function LaporanIzinPage() {
                       <th className="py-2 pr-3">Lokasi</th>
                       <th className="py-2 pr-3">Jumlah Izin</th>
                       <th className="py-2 pr-3">Total Hari</th>
-                      <th className="py-2">Tanggal Izin</th>
+                      <th className="py-2">Detail Izin</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -374,17 +384,28 @@ export default function LaporanIzinPage() {
                               0
                             )}
                           </td>
-                          <td className="py-2 text-slate-600">
-                            {[...k.izin]
-                              .sort(
-                                (a, b) =>
-                                  new Date(a.tanggalMulai).getTime() -
-                                  new Date(b.tanggalMulai).getTime()
-                              )
-                              .map((i) =>
-                                rentangIzin(i.tanggalMulai, i.tanggalAkhir)
-                              )
-                              .join(", ")}
+                          <td className="py-2">
+                            <ul className="space-y-1.5">
+                              {[...k.izin]
+                                .sort(
+                                  (a, b) =>
+                                    new Date(a.tanggalMulai).getTime() -
+                                    new Date(b.tanggalMulai).getTime()
+                                )
+                                .map((i, i_idx) => (
+                                  <li key={i_idx} className="whitespace-nowrap">
+                                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600">
+                                      {LABEL_JENIS_IZIN[i.jenis]}
+                                    </span>{" "}
+                                    <span className="text-slate-700">
+                                      {rentangIzin(i.tanggalMulai, i.tanggalAkhir)}
+                                    </span>
+                                    <span className="ml-1 text-xs text-slate-400">
+                                      · diajukan {formatWaktuInput(i.createdAt)}
+                                    </span>
+                                  </li>
+                                ))}
+                            </ul>
                           </td>
                         </tr>
                       ))}

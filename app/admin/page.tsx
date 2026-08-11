@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { LABEL_JENIS_IZIN, type JenisIzin } from "@/lib/izin";
 import { warnaKehadiran } from "@/lib/kehadiran";
+import ModalTolakPengajuan from "@/components/ModalTolakPengajuan";
 
 type Statistik = {
   totalKaryawan: number;
@@ -53,6 +54,9 @@ export default function AdminDashboard() {
   const [izin, setIzin] = useState<IzinTerbaru[]>([]);
   const [kehadiran, setKehadiran] = useState<Kehadiran | null>(null);
   const [periode, setPeriode] = useState("bulan");
+  const [tolakDialog, setTolakDialog] = useState<{ id: string; nama: string } | null>(
+    null
+  );
 
   async function muat(p = periode) {
     const res = await fetch(`/api/admin/dashboard?periode=${p}`);
@@ -67,13 +71,23 @@ export default function AdminDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [periode]);
 
-  async function ubahStatus(id: string, status: "DISETUJUI" | "DITOLAK") {
+  async function ubahStatus(
+    id: string,
+    status: "DISETUJUI" | "DITOLAK",
+    feedback?: string
+  ) {
     await fetch(`/api/admin/izin/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, feedback }),
     });
     muat();
+  }
+
+  async function konfirmasiTolak(feedback: string) {
+    if (!tolakDialog) return;
+    await ubahStatus(tolakDialog.id, "DITOLAK", feedback);
+    setTolakDialog(null);
   }
 
   if (!stat) return <p className="text-slate-500">Memuat...</p>;
@@ -98,7 +112,12 @@ export default function AdminDashboard() {
       warna: "text-purple-600",
       href: `/admin/rekap-izin?jenis=LAINNYA&periode=${periode}`,
     },
-    { label: "Izin Menunggu", nilai: stat.izinMenunggu, warna: "text-amber-600" },
+    {
+      label: "Izin Menunggu",
+      nilai: stat.izinMenunggu,
+      warna: "text-amber-600",
+      href: "/admin/izin",
+    },
     {
       label: "Tukar Libur Menunggu",
       nilai: stat.tukarLiburMenunggu,
@@ -232,7 +251,9 @@ export default function AdminDashboard() {
                             Setujui
                           </button>
                           <button
-                            onClick={() => ubahStatus(i.id, "DITOLAK")}
+                            onClick={() =>
+                              setTolakDialog({ id: i.id, nama: i.user.nama })
+                            }
                             className="rounded bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700"
                           >
                             Tolak
@@ -296,6 +317,14 @@ export default function AdminDashboard() {
               );
             })}
         </div>
+      )}
+
+      {tolakDialog && (
+        <ModalTolakPengajuan
+          judul={`Tolak izin ${tolakDialog.nama}?`}
+          onBatal={() => setTolakDialog(null)}
+          onTolak={konfirmasiTolak}
+        />
       )}
     </div>
   );

@@ -178,7 +178,7 @@ Field **Mulai Kontrak** dan **Akhir Kontrak** di halaman Edit Karyawan sudah bis
 #### Feature 18 — Ringkasan & Approval Jarak Jauh via Agent Eksternal (OpenClaw) ✅
 **Deskripsi:** Dua endpoint khusus agent (bukan untuk browser/login manusia), autentikasi via token statis di header `Authorization: Bearer <AGENT_REPORT_TOKEN>` (env var, bukan sesi JWT):
 - **`GET /api/admin/ringkasan-agent`** — JSON ringkasan: izin & tukar libur menunggu approval (**termasuk `id` tiap pengajuan**), pendaftaran karyawan baru menunggu approval, dan kontrak yang akan habis dalam 30 hari (masing-masing dengan nama karyawan).
-- **`POST /api/admin/agent-approval`** — setujui/tolak satu izin atau tukar libur. Body `{ tipe: "izin"|"tukar-libur", id, aksi: "setujui"|"tolak" }`. Hanya memproses pengajuan yang masih `MENUNGGU` (kalau sudah diputus → 400). Mengirim notifikasi hasil ke karyawan ybs, persis sama dengan approval lewat dashboard (logika dipusatkan di `lib/approval.ts` — `prosesIzin`/`prosesTukarLibur`, dipakai bersama rute admin ber-sesi `app/api/admin/izin|tukar-libur/[id]`).
+- **`POST /api/admin/agent-approval`** — setujui/tolak satu izin atau tukar libur. Body `{ tipe: "izin"|"tukar-libur", id, aksi: "setujui"|"tolak", feedback? }` (`feedback` opsional, Feature 27). Hanya memproses pengajuan yang masih `MENUNGGU` (kalau sudah diputus → 400). Mengirim notifikasi hasil ke karyawan ybs, persis sama dengan approval lewat dashboard (logika dipusatkan di `lib/approval.ts` — `prosesIzin`/`prosesTukarLibur`, dipakai bersama rute admin ber-sesi `app/api/admin/izin|tukar-libur/[id]`).
 
 Dipakai oleh **OpenClaw** milik user: cron `portal-karyawan-ringkasan` (08:00 WIB harian) mengirim ringkasan ke Telegram, dan user bisa **membalas via Telegram untuk memerintahkan approve/tolak** (agent mengambil id dari ringkasan lalu memanggil endpoint approval; agent dikonfigurasi untuk konfirmasi dulu sebelum eksekusi). Semua panggilan menembak URL **produksi Vercel**. Token ber-scope tunggal: bisa baca ringkasan + approve/tolak izin & tukar libur — TIDAK bisa login, buat/hapus karyawan, atau ubah data lain. Setup OpenClaw (Gateway, cron, channel Telegram, instruksi agent) ada di luar repo ini, di mesin user sendiri.
 **User yang memakai:** Owner/Admin (lewat Telegram dari agent pribadinya)
@@ -243,6 +243,30 @@ Catatan: menetapkan seseorang jadi tetap **tidak menghapus kontraknya yang sudah
 
 Datanya diambil dari `GET /api/admin/rekap-izin` yang sudah ada (ter-scope lokasi sesuai Feature 19), jadi tidak ada endpoint baru.
 **User yang memakai:** Admin, Owner
+
+#### Feature 28 — Halaman "Pengajuan Izin" (`/admin/izin`) ✅
+**Deskripsi:** Perbaikan bug — kartu dashboard **"Izin Menunggu"** ternyata satu-satunya kartu approval yang tidak punya `href` sama sekali (beda dengan "Tukar Libur Menunggu" yang sudah link ke `/admin/tukar-libur`), jadi admin tidak bisa klik tembus ke sana. Root cause: memang belum pernah ada halaman untuk mengelola **semua** pengajuan izin — tabel "Pengajuan Izin Terbaru" di dashboard cuma menampilkan 10 pengajuan terbaru (bukan yang MENUNGGU spesifik), jadi izin lama yang masih menunggu bisa terkubur di luar 10 itu tanpa cara untuk ditemukan.
+
+Dibuat halaman baru **`/admin/izin`** (pola sama persis dengan `/admin/tukar-libur`): tabel semua pengajuan izin ter-scope lokasi, diurutkan **MENUNGGU dulu** (`orderBy: [{status:"asc"},{createdAt:"desc"}]`, memanfaatkan urutan native enum `StatusIzin` di schema), tombol **Setujui/Tolak** per baris (Tolak pakai `ModalTolakPengajuan`, Feature 27), badge jumlah "N menunggu" di judul. Endpoint baru `GET /api/admin/izin`. Kartu dashboard "Izin Menunggu" sekarang link ke halaman ini.
+**User yang memakai:** Admin, Owner
+
+#### Feature 29 — Tipe Izin & Waktu Pengajuan di Laporan Izin "Per Karyawan" ✅
+**Deskripsi:** Kolom "Tanggal Izin" di tab **Per Karyawan** (halaman Laporan Izin, Feature 25) dan sheet **"Per Karyawan"** di file export Excel (Feature 22/24) diganti nama jadi **"Detail Izin"**, isinya diperkaya: tiap baris pengajuan sekarang menampilkan **jenis izin** dan **tanggal + jam saat karyawan mengajukan lewat webapp** (`createdAt`, bukan tanggal izinnya) — bukan cuma daftar tanggal izin polos.
+
+Format per entri: `"{Jenis Izin} — {tanggal izin} (diajukan {tanggal, jam})"`, contoh: `"Izin Sakit — 8 Agu 2026 – 9 Agu 2026 (diajukan 8 Agu 2026, 08.18)"`. Di web tiap entri jadi baris list terpisah dengan badge jenis; di Excel digabung `\n` dalam satu sel (tinggi baris di-set manual `k.tanggal.length * 15` supaya tidak terpotong). Endpoint `GET /api/admin/rekap-izin` diperluas mengembalikan `createdAt` per izin (sebelumnya cuma dipakai internal di sheet "Rekap Izin" export, sekarang juga sampai ke halaman web). Sheet "Rekap Izin" & tab "Rincian" TIDAK diubah — sudah punya jenis & (untuk sheet Excel) tanggal pengajuan sebelumnya, cuma tab Per Karyawan yang diminta.
+**User yang memakai:** Admin, Owner
+
+#### Feature 27 — Feedback Admin Saat Setujui/Tolak Izin & Tukar Libur ✅
+**Deskripsi:** Saat admin/owner menekan **Tolak** pada pengajuan Izin atau Tukar Libur (dashboard, halaman Rekap/Tukar Libur), muncul **modal konfirmasi** (`components/ModalTolakPengajuan.tsx`) berisi kolom **feedback opsional** — boleh dikosongkan, boleh diisi alasan penolakan.
+
+Kalau diisi, feedback disimpan di field baru `feedbackAdmin` (model `Izin` & `TukarLibur`) dan:
+- **Ditampilkan ke karyawan** di riwayat pengajuannya (`/karyawan/izin`) sebagai kotak "Catatan admin: ..." di bawah item yang bersangkutan — kotak ini cuma muncul kalau feedback-nya diisi
+- **Ikut disebut di push notification** ("... ditolak. Catatan: ...") lewat `lib/approval.ts` (`prosesIzin()`, `prosesTukarLibur()`)
+
+Logikanya dipusatkan di `lib/approval.ts` — dipakai bersama oleh rute admin ber-sesi (`app/api/admin/izin/[id]`, `app/api/admin/tukar-libur/[id]`) maupun endpoint agent OpenClaw (`app/api/admin/agent-approval`, Feature 18), jadi feedback juga bisa dikirim lewat perintah Telegram user kalau OpenClaw diberi tahu.
+
+Tombol **Setujui** TIDAK dipasangi modal (langsung eksekusi seperti sebelumnya) — feedback hanya relevan untuk penolakan sesuai permintaan user.
+**User yang memakai:** Admin, Owner (mengisi), Karyawan (menerima notifikasi & membaca feedback)
 
 #### Feature 26 — Jenis Izin Baru: Izin Setengah Hari ✅
 **Deskripsi:** Jenis izin ke-5, muncul di dropdown "Jenis Pengajuan" **tepat di bawah Izin Lain-lain** (SAKIT → LAINNYA → **SETENGAH_HARI** → MENIKAH → TUGAS_NEGARA — urutan ini di `lib/izin.ts`, dipakai konsisten di semua dropdown).
@@ -341,6 +365,7 @@ Otomatis ikut di semua tempat yang sudah generik lewat `JENIS_IZIN`/`LABEL_JENIS
 | alasan | |
 | surat_dokter | file upload (PDF/JPG/PNG maks 5 MB), **opsional** (tidak ada validasi wajib berdasar jumlah hari). Hanya bisa dibuka pemilik izin dan admin/owner |
 | status | `MENUNGGU` / `DISETUJUI` / `DITOLAK` (di-approve admin/owner) |
+| feedbackAdmin | opsional, diisi admin/owner saat setujui/tolak (Feature 27) — tampil ke karyawan di riwayat & notifikasi |
 
 ---
 

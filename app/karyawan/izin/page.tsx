@@ -17,6 +17,7 @@ type Izin = {
   alasan: string;
   suratDokter: string | null;
   status: "MENUNGGU" | "DISETUJUI" | "DITOLAK";
+  feedbackAdmin: string | null;
   createdAt: string;
 };
 
@@ -27,6 +28,7 @@ type TukarLibur = {
   tanggalPengganti: string | null;
   keterangan: string | null;
   status: "MENUNGGU" | "DISETUJUI" | "DITOLAK";
+  feedbackAdmin: string | null;
   createdAt: string;
 };
 
@@ -444,6 +446,12 @@ export default function IzinPage() {
                           Tanpa surat dokter
                         </p>
                       ))}
+                    {r.feedbackAdmin && (
+                      <p className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-600">
+                        <span className="font-medium">Catatan admin:</span>{" "}
+                        {r.feedbackAdmin}
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div>
@@ -461,6 +469,12 @@ export default function IzinPage() {
                     {r.keterangan && (
                       <p className="mt-0.5 text-sm text-slate-500">
                         {r.keterangan}
+                      </p>
+                    )}
+                    {r.feedbackAdmin && (
+                      <p className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-600">
+                        <span className="font-medium">Catatan admin:</span>{" "}
+                        {r.feedbackAdmin}
                       </p>
                     )}
                   </div>

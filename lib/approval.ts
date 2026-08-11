@@ -9,35 +9,51 @@ import { LABEL_JENIS_IZIN } from "./izin";
 
 export type StatusKeputusan = "DISETUJUI" | "DITOLAK";
 
-export async function prosesIzin(id: string, status: StatusKeputusan) {
-  const izin = await prisma.izin.update({ where: { id }, data: { status } });
+// feedback: catatan opsional admin/owner (mis. alasan penolakan), disimpan di
+// feedbackAdmin & ikut ditampilkan ke karyawan di riwayat pengajuannya serta
+// disertakan dalam isi notifikasi push kalau diisi.
+export async function prosesIzin(
+  id: string,
+  status: StatusKeputusan,
+  feedback?: string
+) {
+  const izin = await prisma.izin.update({
+    where: { id },
+    data: { status, feedbackAdmin: feedback?.trim() || null },
+  });
 
+  const inti = `${LABEL_JENIS_IZIN[izin.jenis]} ${izin.tanggalMulai.toLocaleDateString(
+    "id-ID",
+    { day: "numeric", month: "short" }
+  )} ${status === "DISETUJUI" ? "telah disetujui" : "ditolak"}.`;
   await kirimNotifKeUser(izin.userId, {
     judul: `Izin Anda ${status === "DISETUJUI" ? "disetujui ✅" : "ditolak ❌"}`,
-    isi: `${LABEL_JENIS_IZIN[izin.jenis]} ${izin.tanggalMulai.toLocaleDateString(
-      "id-ID",
-      { day: "numeric", month: "short" }
-    )} ${status === "DISETUJUI" ? "telah disetujui" : "ditolak"}.`,
+    isi: izin.feedbackAdmin ? `${inti} Catatan: ${izin.feedbackAdmin}` : inti,
     url: "/karyawan/izin",
   }).catch(() => {});
 
   return izin;
 }
 
-export async function prosesTukarLibur(id: string, status: StatusKeputusan) {
+export async function prosesTukarLibur(
+  id: string,
+  status: StatusKeputusan,
+  feedback?: string
+) {
   const tukarLibur = await prisma.tukarLibur.update({
     where: { id },
-    data: { status },
+    data: { status, feedbackAdmin: feedback?.trim() || null },
   });
 
+  const inti = `Tukar libur ${tukarLibur.tanggalLibur.toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+  })} dengan ${tukarLibur.tukarDengan} ${
+    status === "DISETUJUI" ? "telah disetujui" : "ditolak"
+  }.`;
   await kirimNotifKeUser(tukarLibur.userId, {
     judul: `Tukar libur ${status === "DISETUJUI" ? "disetujui ✅" : "ditolak ❌"}`,
-    isi: `Tukar libur ${tukarLibur.tanggalLibur.toLocaleDateString("id-ID", {
-      day: "numeric",
-      month: "short",
-    })} dengan ${tukarLibur.tukarDengan} ${
-      status === "DISETUJUI" ? "telah disetujui" : "ditolak"
-    }.`,
+    isi: tukarLibur.feedbackAdmin ? `${inti} Catatan: ${tukarLibur.feedbackAdmin}` : inti,
     url: "/karyawan/izin",
   }).catch(() => {});
 

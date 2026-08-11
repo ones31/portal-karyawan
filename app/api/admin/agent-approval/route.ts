@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Token tidak valid" }, { status: 401 });
   }
 
-  const { tipe, id, aksi } = await req.json();
+  const { tipe, id, aksi, feedback } = await req.json();
   if (!["izin", "tukar-libur"].includes(tipe)) {
     return NextResponse.json(
       { error: "tipe harus 'izin' atau 'tukar-libur'" },
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-    await prosesIzin(id, status);
+    await prosesIzin(id, status, feedback);
     return NextResponse.json({ ok: true, ringkas: `Izin ${izin.user.nama} ${kata}.` });
   }
 
@@ -75,7 +75,7 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
-  await prosesTukarLibur(id, status);
+  await prosesTukarLibur(id, status, feedback);
   return NextResponse.json({
     ok: true,
     ringkas: `Tukar libur ${tukarLibur.user.nama} ${kata}.`,

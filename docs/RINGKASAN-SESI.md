@@ -1,8 +1,8 @@
 # Ringkasan Sesi — Portal Toko Marmo
 
-**Versi: v7** — diperbarui 2026-08-04
+**Versi: v9** — diperbarui 2026-08-11
 
-> Ditulis untuk melanjutkan pekerjaan di sesi Claude Code baru. Baca ini + `docs/PRD.md` (kebenaran tunggal fitur, sekarang sampai **Feature 26**) + `AGENTS.md` (manual operasi & aturan kerja, sekarang 17 kesalahan umum) sebelum lanjut.
+> Ditulis untuk melanjutkan pekerjaan di sesi Claude Code baru. Baca ini + `docs/PRD.md` (kebenaran tunggal fitur, sekarang sampai **Feature 29**) + `AGENTS.md` (manual operasi & aturan kerja, sekarang 18 kesalahan umum) sebelum lanjut.
 
 ## Status saat ini
 
@@ -12,7 +12,27 @@
 
 Catatan: schema `Catatan` ter-migrate ke Neon yang **dipakai bersama dev & produksi**, jadi perubahan schema lokal langsung berlaku di produksi.
 
-## Fitur terbaru (Feature 26 di PRD) — sesi 4 Agu 2026
+⚠️ **Feature 27–29 (di bawah) BELUM di-deploy** — selesai & diverifikasi lokal, produksi masih di `4036432`.
+
+## Fitur terbaru (Feature 27–29 di PRD) — sesi 11 Agu 2026
+
+### Feature 27 — Feedback admin saat tolak Izin/Tukar Libur
+Klik **Tolak** (dashboard, `/admin/tukar-libur`) sekarang buka **modal** (`components/ModalTolakPengajuan.tsx`) dengan kolom feedback **opsional**.
+- Kalau diisi: tersimpan di `feedbackAdmin` (kolom baru di `Izin` & `TukarLibur`), tampil ke karyawan di riwayat pengajuan (`/karyawan/izin`) sebagai kotak "Catatan admin: ...", dan ikut disebut di push notification
+- Kalau dikosongkan: perilaku sama seperti sebelumnya (tolak langsung, tanpa catatan)
+- Tombol **Setujui** TIDAK dipasangi modal — sesuai permintaan user, feedback cuma buat penolakan
+- Logika dipusatkan di `lib/approval.ts` (`prosesIzin`/`prosesTukarLibur`, sekarang terima param `feedback` opsional) — dipakai bersama rute admin ber-sesi DAN endpoint OpenClaw (`agent-approval`), jadi kalau nanti OpenClaw diberi tahu, feedback bisa dikirim dari situ juga
+- Diuji: karyawan sendiri tidak bisa tolak (403), tolak dengan feedback → tersimpan & tampil, tolak tanpa feedback → tidak ada kotak catatan yang muncul, modal "Batal" tidak mengubah status
+
+### Feature 28 — Bug fix: kartu "Izin Menunggu" sekarang bisa diklik
+User laporkan ada 2 izin menunggu tapi tidak bisa disetujui/tolak dari dashboard. Root cause: kartu "Izin Menunggu" **satu-satunya kartu approval tanpa `href`** — tidak pernah link kemana-mana sejak awal (kesalahan #18 baru di AGENTS.md). Dibuat halaman baru **`/admin/izin`** (pola sama `/admin/tukar-libur`): semua pengajuan izin, MENUNGGU di atas, tombol Setujui/Tolak. Endpoint baru `GET /api/admin/izin`. Kartu dashboard sekarang link ke sana.
+
+⚠️ **Insiden kecil saat testing fitur ini**: salah klik "Setujui" pas verifikasi UI, tidak sengaja menyetujui izin SUNGGUHAN milik karyawan Putri (bukan data uji). Ketahuan dari badge "2 menunggu" → "1 menunggu" yang tidak seharusnya berubah. Langsung dikembalikan ke MENUNGGU + `feedbackAdmin: null`, diverifikasi datanya utuh persis semula. Pelajaran: hati-hati kalau tabel testing berisi data campuran (sungguhan + kemungkinan uji) — cek dulu row mana yang bakal kena klik sebelum eksekusi, terutama di dev yang **database-nya sama dengan produksi**.
+
+### Feature 29 — Tipe izin & waktu pengajuan di Laporan Izin "Per Karyawan"
+Kolom "Tanggal Izin" di tab Per Karyawan (Laporan Izin) dan sheet Excel "Per Karyawan" diganti jadi **"Detail Izin"**: tiap baris sekarang tampilkan **jenis izin** + **tanggal & jam saat karyawan input di webapp** (`createdAt`, bukan tanggal izinnya). Format: `"Izin Sakit — 8 Agu 2026 – 9 Agu 2026 (diajukan 8 Agu 2026, 08.18)"`. Endpoint `GET /api/admin/rekap-izin` diperluas mengembalikan `createdAt` per izin. Web & Excel sekarang identik isinya (dicek langsung, sama persis). Sheet "Rekap Izin"/tab Rincian TIDAK diubah — cuma tab Per Karyawan yang diminta.
+
+## Fitur sesi sebelumnya (Feature 26 di PRD) — 4 Agu 2026, sudah di-deploy
 
 ### Feature 26 — Jenis izin baru: Setengah Hari
 Dropdown "Jenis Pengajuan" (karyawan & admin) sekarang punya **Izin Setengah Hari**, diletakkan **tepat di bawah Izin Lain-lain**: SAKIT → LAINNYA → **SETENGAH_HARI** → MENIKAH → TUGAS_NEGARA.
@@ -131,8 +151,8 @@ Kalau schema Prisma berubah: `npx prisma migrate dev --name <nama>` lalu **resta
 
 ## Dokumen rujukan di repo
 
-- **`docs/PRD.md`** — 26 fitur ✅, data model (termasuk `lokasiAkses`, `tetapManual` & entity `Catatan`), fase project. **Selalu update setiap fitur baru.**
-- **`AGENTS.md`** — manual operasi: stack terkunci, konstanta bisnis per file `lib/`, **17 kesalahan umum** + aturan penangkalnya, kapan harus berhenti & bertanya.
+- **`docs/PRD.md`** — 29 fitur ✅, data model (termasuk `lokasiAkses`, `tetapManual`, `feedbackAdmin` & entity `Catatan`), fase project. **Selalu update setiap fitur baru.**
+- **`AGENTS.md`** — manual operasi: stack terkunci, konstanta bisnis per file `lib/`, **18 kesalahan umum** + aturan penangkalnya, kapan harus berhenti & bertanya.
 - **`.claude/skills/`** — `verifikasi-portal`, `tambah-fitur-portal`, `impor-karyawan`.
 
 ## Pola kerja yang disukai user (penting untuk sesi baru)
@@ -147,6 +167,8 @@ Setiap kali file ini diperbarui: naikkan **Versi** di judul +1, lalu tambah satu
 
 | Versi | Tanggal | Ringkasan perubahan |
 |---|---|---|
+| v9 | 2026-08-11 | **Feature 28** (bug fix: halaman `/admin/izin` + link kartu "Izin Menunggu" yang tadinya buntu, kesalahan #18 dicatat) & **Feature 29** (kolom Detail Izin: jenis + jam pengajuan di Laporan Izin Per Karyawan & export). Belum di-deploy. |
+| v8 | 2026-08-11 | **Feature 27** (feedback admin opsional saat tolak Izin/Tukar Libur — modal, `feedbackAdmin`, tampil ke karyawan + ikut notifikasi). Belum di-deploy. |
 | v7 | 2026-08-04 | Feature 26 (+ susulan pengecualian kehadiran) **di-deploy ke produksi** (commit `4036432`, READY, diverifikasi langsung di www.marmo.my.id). |
 | v6 | 2026-08-04 | Susulan Feature 26: Izin Setengah Hari dikecualikan PENUH dari persentase kehadiran (bukan 0,5 hari) via `JENIS_TIDAK_HITUNG_KEHADIRAN`. Belum di-deploy. |
 | v5 | 2026-08-04 | **Feature 26** (jenis izin baru Setengah Hari, 1 tanggal, di bawah Izin Lain-lain, otomatis ikut Laporan Izin & export). Belum di-deploy. |

@@ -47,6 +47,7 @@ export async function GET(req: Request) {
         alasan: string;
         status: string;
         suratDokter: string | null;
+        createdAt: Date;
       }[];
     }
   >();
@@ -71,6 +72,7 @@ export async function GET(req: Request) {
       alasan: i.alasan,
       status: i.status,
       suratDokter: i.suratDokter,
+      createdAt: i.createdAt,
     });
   }
 

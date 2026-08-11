@@ -142,6 +142,7 @@ model Izin {
   alasan       String
   suratDokter  String?    // nama file surat dokter di folder uploads/surat-dokter
   status       StatusIzin @default(MENUNGGU)
+  feedbackAdmin String?   // opsional, diisi admin/owner saat setujui/tolak — tampil ke karyawan
   createdAt    DateTime   @default(now())
 }
 
@@ -154,5 +155,6 @@ model TukarLibur {
   tanggalPengganti DateTime?  // tanggal libur pengganti (opsional)
   keterangan       String?
   status           StatusIzin @default(MENUNGGU)
+  feedbackAdmin    String?    // opsional, diisi admin/owner saat setujui/tolak — tampil ke karyawan
   createdAt        DateTime   @default(now())
 }

@@ -14,7 +14,7 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { status } = await req.json();
+  const { status, feedback } = await req.json();
   if (!["DISETUJUI", "DITOLAK"].includes(status)) {
     return NextResponse.json({ error: "Status tidak valid" }, { status: 400 });
   }
@@ -36,6 +36,6 @@ export async function PATCH(
     );
   }
 
-  const tukarLibur = await prosesTukarLibur(id, status);
+  const tukarLibur = await prosesTukarLibur(id, status, feedback);
   return NextResponse.json({ tukarLibur });
 }

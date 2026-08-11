@@ -69,6 +69,14 @@ function rentangIzin(mulai: Date, akhir: Date) {
   return a === b ? a : `${a} – ${b}`;
 }
 
+// Kapan karyawan mengajukan izinnya di webapp (bukan tanggal izinnya sendiri),
+// dengan jam — format "15 Jul 2026, 09.14"
+function waktuInputRingkas(d: Date) {
+  const jam = String(d.getHours()).padStart(2, "0");
+  const menit = String(d.getMinutes()).padStart(2, "0");
+  return `${tanggalRingkas(d)}, ${jam}.${menit}`;
+}
+
 // Nama file yang sudah menyertakan rentang tanggal, mis.
 // "Rekap-Izin-Sakit_2026-07-01_sd_2026-07-31.xlsx"
 export function namaFileExport(labelJenis: string, dari: Date, sampai: Date) {
@@ -168,7 +176,7 @@ export async function buatExcelRekapIzin(
     { width: 13 },
     { width: 14 },
     { width: 12 },
-    { width: 55 },
+    { width: 65 },
   ];
 
   const judul2 = ws2.addRow([
@@ -184,7 +192,7 @@ export async function buatExcelRekapIzin(
     "Lokasi",
     "Jumlah Izin",
     "Total Hari",
-    "Tanggal Izin",
+    "Detail Izin",
   ]);
   header2.font = { bold: true };
   header2.alignment = { horizontal: "center" };
@@ -209,8 +217,8 @@ export async function buatExcelRekapIzin(
       lokasi: string | null;
       jumlah: number;
       totalHari: number;
-      // Tanggal tiap izin, disimpan mentah dulu supaya bisa diurutkan kronologis
-      tanggal: { mulai: Date; akhir: Date }[];
+      // Tiap izin disimpan mentah dulu supaya bisa diurutkan kronologis
+      tanggal: { jenis: JenisIzin; mulai: Date; akhir: Date; createdAt: Date }[];
     }
   >();
   for (const b of baris) {
@@ -221,7 +229,12 @@ export async function buatExcelRekapIzin(
     }
     e.jumlah++;
     e.totalHari += jumlahHariIzin(b.tanggalMulai, b.tanggalAkhir);
-    e.tanggal.push({ mulai: b.tanggalMulai, akhir: b.tanggalAkhir });
+    e.tanggal.push({
+      jenis: b.jenis,
+      mulai: b.tanggalMulai,
+      akhir: b.tanggalAkhir,
+      createdAt: b.createdAt,
+    });
   }
 
   [...perKaryawan.values()]
@@ -230,8 +243,11 @@ export async function buatExcelRekapIzin(
       const daftarTanggal = k.tanggal
         .slice()
         .sort((a, b) => a.mulai.getTime() - b.mulai.getTime())
-        .map((t) => rentangIzin(t.mulai, t.akhir))
-        .join(", ");
+        .map(
+          (t) =>
+            `${LABEL_JENIS_IZIN[t.jenis]} — ${rentangIzin(t.mulai, t.akhir)} (diajukan ${waktuInputRingkas(t.createdAt)})`
+        )
+        .join("\n");
       const r = ws2.addRow([
         idx + 1,
         k.nama,
@@ -245,6 +261,9 @@ export async function buatExcelRekapIzin(
       r.getCell(4).alignment = { horizontal: "center", vertical: "top" };
       r.getCell(5).alignment = { horizontal: "center", vertical: "top" };
       r.getCell(6).alignment = { wrapText: true, vertical: "top" };
+      // Baris berisi banyak baris teks (satu per izin) — set tinggi manual
+      // supaya tidak terpotong saat file dibuka (Excel tidak selalu auto-fit).
+      r.height = Math.max(15, k.tanggal.length * 15);
     });
 
   const buffer = await wb.xlsx.writeBuffer();

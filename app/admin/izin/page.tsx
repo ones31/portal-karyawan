@@ -1,15 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { LABEL_JENIS_IZIN, type JenisIzin } from "@/lib/izin";
 import ModalTolakPengajuan from "@/components/ModalTolakPengajuan";
 
-type TukarLibur = {
+type Izin = {
   id: string;
-  tanggalLibur: string;
-  tukarDengan: string;
-  tanggalPengganti: string | null;
-  keterangan: string | null;
+  jenis: JenisIzin;
+  tanggalMulai: string;
+  tanggalAkhir: string;
+  alasan: string;
+  suratDokter: string | null;
   status: "MENUNGGU" | "DISETUJUI" | "DITOLAK";
+  feedbackAdmin: string | null;
   user: { nama: string; lokasi: string | null };
 };
 
@@ -27,14 +30,14 @@ function formatTanggal(s: string) {
   });
 }
 
-export default function AdminTukarLiburPage() {
-  const [daftar, setDaftar] = useState<TukarLibur[] | null>(null);
+export default function AdminIzinPage() {
+  const [daftar, setDaftar] = useState<Izin[] | null>(null);
   const [tolakDialog, setTolakDialog] = useState<{ id: string; nama: string } | null>(
     null
   );
 
   async function muat() {
-    const res = await fetch("/api/admin/tukar-libur");
+    const res = await fetch("/api/admin/izin");
     const { daftar } = await res.json();
     setDaftar(daftar ?? []);
   }
@@ -48,7 +51,7 @@ export default function AdminTukarLiburPage() {
     status: "DISETUJUI" | "DITOLAK",
     feedback?: string
   ) {
-    await fetch(`/api/admin/tukar-libur/${id}`, {
+    await fetch(`/api/admin/izin/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status, feedback }),
@@ -62,17 +65,24 @@ export default function AdminTukarLiburPage() {
     setTolakDialog(null);
   }
 
+  const jumlahMenunggu = daftar?.filter((i) => i.status === "MENUNGGU").length ?? 0;
+
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">Pengajuan Tukar Libur</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold">Pengajuan Izin</h1>
+        {jumlahMenunggu > 0 && (
+          <span className="rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-700">
+            {jumlahMenunggu} menunggu
+          </span>
+        )}
+      </div>
 
       {daftar === null ? (
         <p className="text-slate-500">Memuat...</p>
       ) : daftar.length === 0 ? (
         <div className="rounded-xl bg-white p-6 shadow-sm">
-          <p className="text-sm text-slate-500">
-            Belum ada pengajuan tukar libur.
-          </p>
+          <p className="text-sm text-slate-500">Belum ada pengajuan izin.</p>
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl bg-white p-6 shadow-sm">
@@ -80,56 +90,69 @@ export default function AdminTukarLiburPage() {
             <thead>
               <tr className="border-b border-slate-200 text-slate-500">
                 <th className="py-2 pr-4">Karyawan</th>
-                <th className="py-2 pr-4">Tgl Libur Ditukar</th>
-                <th className="py-2 pr-4">Ditukar Dengan</th>
-                <th className="py-2 pr-4">Libur Pengganti</th>
-                <th className="py-2 pr-4">Keterangan</th>
+                <th className="py-2 pr-4">Jenis</th>
+                <th className="py-2 pr-4">Tanggal</th>
+                <th className="py-2 pr-4">Alasan</th>
                 <th className="py-2 pr-4">Status</th>
                 <th className="py-2">Aksi</th>
               </tr>
             </thead>
             <tbody>
-              {daftar.map((t) => (
-                <tr key={t.id} className="border-b border-slate-100">
+              {daftar.map((i) => (
+                <tr key={i.id} className="border-b border-slate-100">
                   <td className="py-3 pr-4">
-                    <p className="font-medium">{t.user.nama}</p>
-                    {t.user.lokasi && (
-                      <p className="text-xs text-slate-500">{t.user.lokasi}</p>
+                    <p className="font-medium">{i.user.nama}</p>
+                    {i.user.lokasi && (
+                      <p className="text-xs text-slate-500">{i.user.lokasi}</p>
                     )}
                   </td>
                   <td className="py-3 pr-4 whitespace-nowrap">
-                    {formatTanggal(t.tanggalLibur)}
+                    {LABEL_JENIS_IZIN[i.jenis]}
                   </td>
-                  <td className="py-3 pr-4">{t.tukarDengan}</td>
                   <td className="py-3 pr-4 whitespace-nowrap">
-                    {t.tanggalPengganti ? (
-                      formatTanggal(t.tanggalPengganti)
-                    ) : (
-                      <span className="text-slate-400">—</span>
-                    )}
+                    {i.tanggalMulai === i.tanggalAkhir
+                      ? formatTanggal(i.tanggalMulai)
+                      : `${formatTanggal(i.tanggalMulai)} — ${formatTanggal(i.tanggalAkhir)}`}
                   </td>
-                  <td className="py-3 pr-4 max-w-48 truncate" title={t.keterangan ?? ""}>
-                    {t.keterangan ?? <span className="text-slate-400">—</span>}
+                  <td className="py-3 pr-4 max-w-56">
+                    <span className="block truncate" title={i.alasan}>
+                      {i.alasan || <span className="text-slate-400">—</span>}
+                    </span>
+                    {i.jenis === "SAKIT" && i.suratDokter && (
+                      <a
+                        href={`/api/izin/surat/${i.suratDokter}`}
+                        target="_blank"
+                        className="text-xs font-medium text-blue-600 hover:underline"
+                      >
+                        📎 Surat dokter
+                      </a>
+                    )}
+                    {i.feedbackAdmin && (
+                      <p className="mt-1 text-xs text-slate-500">
+                        <span className="font-medium">Catatan:</span>{" "}
+                        {i.feedbackAdmin}
+                      </p>
+                    )}
                   </td>
                   <td className="py-3 pr-4">
                     <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[t.status]}`}
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[i.status]}`}
                     >
-                      {t.status}
+                      {i.status}
                     </span>
                   </td>
                   <td className="py-3">
-                    {t.status === "MENUNGGU" && (
+                    {i.status === "MENUNGGU" && (
                       <div className="flex gap-2">
                         <button
-                          onClick={() => ubahStatus(t.id, "DISETUJUI")}
+                          onClick={() => ubahStatus(i.id, "DISETUJUI")}
                           className="rounded bg-green-600 px-2 py-1 text-xs font-medium text-white hover:bg-green-700"
                         >
                           Setujui
                         </button>
                         <button
                           onClick={() =>
-                            setTolakDialog({ id: t.id, nama: t.user.nama })
+                            setTolakDialog({ id: i.id, nama: i.user.nama })
                           }
                           className="rounded bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700"
                         >
@@ -147,7 +170,7 @@ export default function AdminTukarLiburPage() {
 
       {tolakDialog && (
         <ModalTolakPengajuan
-          judul={`Tolak tukar libur ${tolakDialog.nama}?`}
+          judul={`Tolak izin ${tolakDialog.nama}?`}
           onBatal={() => setTolakDialog(null)}
           onTolak={konfirmasiTolak}
         />
