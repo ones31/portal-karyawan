@@ -1,6 +1,6 @@
 # Ringkasan Sesi — Portal Toko Marmo
 
-**Versi: v13** — diperbarui 2026-08-11
+**Versi: v14** — diperbarui 2026-08-11
 
 > Ditulis untuk melanjutkan pekerjaan di sesi Claude Code baru. Baca ini + `docs/PRD.md` (kebenaran tunggal fitur, sekarang sampai **Feature 30**) + `AGENTS.md` (manual operasi & aturan kerja, sekarang 18 kesalahan umum) sebelum lanjut.
 
@@ -8,13 +8,11 @@
 
 **Live di produksi:** https://portal-karyawan-theta.vercel.app **dan** domain custom **https://www.marmo.my.id** (alias ke deployment yang sama). Database **PostgreSQL (Neon)** — dev lokal dan produksi **berbagi database yang sama persis**, jadi perubahan schema/data lokal langsung berlaku di produksi juga. File surat dokter di **Vercel Blob**.
 
-**Deploy terakhir:** commit `6fc02de` ("feedback admin, halaman kelola izin, detail izin per karyawan") — 11 Agu 2026, status READY di kedua domain. Diverifikasi di produksi: `/admin/izin` 200 dengan 2 MENUNGGU, tolak-dengan-feedback tersimpan & 403 untuk karyawan sendiri, sheet Excel "Per Karyawan" sudah kolom "Detail Izin". Deployment dicek lewat `GET /v6/deployments/{id}/files` — **tidak ada `.env`/secret yang ikut ter-upload**.
-
-⚠️ **Susulan Feature 29 (kolom "Diajukan" di `/admin/izin`) & Feature 30 (cegah duplikasi izin) BELUM di-deploy** — selesai & diverifikasi lokal, produksi masih di `6fc02de`.
+**Deploy terakhir:** commit `8aec394` ("kolom Diajukan di /admin/izin, cegah duplikasi izin, izinkan lengkapi surat dokter") — 11 Agu 2026, status READY di kedua domain. Diverifikasi di produksi: kolom Diajukan tampil, kirim SAKIT tanpa surat dokter lalu lengkapi dengan surat dokter → ID sama (update, bukan baris baru), kirim lagi setelah ada surat dokter → 400 duplikat. Deployment dicek lewat `GET /v6/deployments/{id}/files` — **tidak ada `.env`/secret yang ikut ter-upload**.
 
 Catatan: schema `Catatan` ter-migrate ke Neon yang **dipakai bersama dev & produksi**, jadi perubahan schema lokal langsung berlaku di produksi.
 
-## Fitur terbaru (Feature 27–29 di PRD) — sesi 11 Agu 2026, sudah di-deploy
+## Fitur terbaru (Feature 27–30 di PRD) — sesi 11 Agu 2026, sudah di-deploy
 
 ### Feature 27 — Feedback admin saat tolak Izin/Tukar Libur
 Klik **Tolak** (dashboard, `/admin/tukar-libur`) sekarang buka **modal** (`components/ModalTolakPengajuan.tsx`) dengan kolom feedback **opsional**.
@@ -32,9 +30,9 @@ User laporkan ada 2 izin menunggu tapi tidak bisa disetujui/tolak dari dashboard
 ### Feature 29 — Tipe izin & waktu pengajuan di Laporan Izin "Per Karyawan"
 Kolom "Tanggal Izin" di tab Per Karyawan (Laporan Izin) dan sheet Excel "Per Karyawan" diganti jadi **"Detail Izin"**: tiap baris sekarang tampilkan **jenis izin** + **tanggal & jam saat karyawan input di webapp** (`createdAt`, bukan tanggal izinnya). Format: `"Izin Sakit — 8 Agu 2026 – 9 Agu 2026 (diajukan 8 Agu 2026, 08.18)"`. Endpoint `GET /api/admin/rekap-izin` diperluas mengembalikan `createdAt` per izin. Web & Excel sekarang identik isinya (dicek langsung, sama persis). Sheet "Rekap Izin"/tab Rincian TIDAK diubah — cuma tab Per Karyawan yang diminta.
 
-**Susulan (belum di-deploy):** user minta hal yang sama juga di halaman **`/admin/izin`** (Feature 28) — ditambah kolom **"Diajukan"** (tanggal+jam, format sama) di antara Tanggal dan Alasan. `GET /api/admin/izin` sudah otomatis punya `createdAt` (tidak pakai `select` eksplisit), tinggal ditampilkan.
+**Susulan:** user minta hal yang sama juga di halaman **`/admin/izin`** (Feature 28) — ditambah kolom **"Diajukan"** (tanggal+jam, format sama) di antara Tanggal dan Alasan. `GET /api/admin/izin` sudah otomatis punya `createdAt` (tidak pakai `select` eksplisit), tinggal ditampilkan.
 
-### Feature 30 — Cegah duplikasi pengajuan izin (belum di-deploy)
+### Feature 30 — Cegah duplikasi pengajuan izin
 Karyawan/admin tidak bisa ajukan izin **jenis sama** untuk tanggal **sama/tumpang tindih** dengan pengajuan yang masih **MENUNGGU atau DISETUJUI** — ditolak 400 dengan pesan yang sebut detail pengajuan sebelumnya (contoh: `"Izin Lain-lain untuk tanggal 10 Sep 2026 sudah pernah diajukan sebelumnya (status: menunggu)..."`).
 - **Izin DITOLAK TIDAK menghalangi** ajuan ulang (keputusan desain: wajar mencoba lagi setelah ditolak) — diuji eksplisit
 - Jenis izin **berbeda** di tanggal sama tetap boleh (bukan duplikat satu sama lain) — diuji eksplisit
@@ -181,6 +179,7 @@ Setiap kali file ini diperbarui: naikkan **Versi** di judul +1, lalu tambah satu
 
 | Versi | Tanggal | Ringkasan perubahan |
 |---|---|---|
+| v14 | 2026-08-11 | Feature 28 (kolom Diajukan) & 30 (+ revisi lengkapi surat dokter) **di-deploy ke produksi** (commit `8aec394`, READY, diverifikasi langsung di www.marmo.my.id — update-bukan-baris-baru & blokir duplikat dikonfirmasi kerja). |
 | v13 | 2026-08-11 | Revisi Feature 30: izin Sakit tanpa surat dokter boleh dilengkapi surat dokter belakangan (UPDATE baris, bukan baris baru) — koreksi dari contoh nyata Haryanto yang user tunjukkan. Belum di-deploy. |
 | v12 | 2026-08-11 | **Feature 30** (cegah duplikasi izin jenis sama + tanggal tumpang tindih, izin DITOLAK tidak menghalangi ajuan ulang). Belum di-deploy. |
 | v11 | 2026-08-11 | Susulan Feature 29: kolom "Diajukan" (tanggal+jam) ditambah juga ke `/admin/izin`, bukan cuma Laporan Izin. Belum di-deploy. |
