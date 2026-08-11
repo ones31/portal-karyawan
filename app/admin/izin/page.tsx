@@ -13,6 +13,7 @@ type Izin = {
   suratDokter: string | null;
   status: "MENUNGGU" | "DISETUJUI" | "DITOLAK";
   feedbackAdmin: string | null;
+  createdAt: string;
   user: { nama: string; lokasi: string | null };
 };
 
@@ -28,6 +29,15 @@ function formatTanggal(s: string) {
     month: "short",
     year: "numeric",
   });
+}
+
+// Kapan karyawan mengajukan izinnya di webapp (bukan tanggal izinnya sendiri),
+// dengan jam — format "15 Jul 2026, 09.14"
+function formatWaktuInput(s: string) {
+  const d = new Date(s);
+  const jam = String(d.getHours()).padStart(2, "0");
+  const menit = String(d.getMinutes()).padStart(2, "0");
+  return `${formatTanggal(s)}, ${jam}.${menit}`;
 }
 
 export default function AdminIzinPage() {
@@ -92,6 +102,7 @@ export default function AdminIzinPage() {
                 <th className="py-2 pr-4">Karyawan</th>
                 <th className="py-2 pr-4">Jenis</th>
                 <th className="py-2 pr-4">Tanggal</th>
+                <th className="py-2 pr-4">Diajukan</th>
                 <th className="py-2 pr-4">Alasan</th>
                 <th className="py-2 pr-4">Status</th>
                 <th className="py-2">Aksi</th>
@@ -113,6 +124,9 @@ export default function AdminIzinPage() {
                     {i.tanggalMulai === i.tanggalAkhir
                       ? formatTanggal(i.tanggalMulai)
                       : `${formatTanggal(i.tanggalMulai)} — ${formatTanggal(i.tanggalAkhir)}`}
+                  </td>
+                  <td className="py-3 pr-4 whitespace-nowrap text-slate-500">
+                    {formatWaktuInput(i.createdAt)}
                   </td>
                   <td className="py-3 pr-4 max-w-56">
                     <span className="block truncate" title={i.alasan}>

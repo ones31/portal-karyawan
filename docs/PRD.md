@@ -250,10 +250,26 @@ Datanya diambil dari `GET /api/admin/rekap-izin` yang sudah ada (ter-scope lokas
 Dibuat halaman baru **`/admin/izin`** (pola sama persis dengan `/admin/tukar-libur`): tabel semua pengajuan izin ter-scope lokasi, diurutkan **MENUNGGU dulu** (`orderBy: [{status:"asc"},{createdAt:"desc"}]`, memanfaatkan urutan native enum `StatusIzin` di schema), tombol **Setujui/Tolak** per baris (Tolak pakai `ModalTolakPengajuan`, Feature 27), badge jumlah "N menunggu" di judul. Endpoint baru `GET /api/admin/izin`. Kartu dashboard "Izin Menunggu" sekarang link ke halaman ini.
 **User yang memakai:** Admin, Owner
 
+#### Feature 30 — Cegah Duplikasi Pengajuan Izin ✅
+**Deskripsi:** Karyawan (atau admin atas nama karyawan) tidak bisa mengajukan izin **jenis yang sama** untuk tanggal yang **sama atau tumpang tindih** dengan pengajuan yang **masih MENUNGGU atau sudah DISETUJUI**. Ditolak **400** dengan pesan yang menyebut detail pengajuan sebelumnya, contoh:
+
+> "Izin Lain-lain untuk tanggal 10 Sep 2026 sudah pernah diajukan sebelumnya (status: menunggu). Tidak bisa mengajukan izin jenis yang sama untuk tanggal yang sama/tumpang tindih."
+
+**Izin yang sudah DITOLAK TIDAK menghalangi** pengajuan ulang — keputusan desain: setelah ditolak, karyawan wajar mencoba lagi (mis. dengan surat dokter atau alasan lebih lengkap). Jenis izin yang **berbeda** di tanggal yang sama tetap boleh (mis. Sakit dan Setengah Hari di hari yang sama bukan duplikat satu sama lain).
+
+**Pengecualian penting — melengkapi surat dokter:** izin Sakit yang tadinya diajukan **tanpa** surat dokter boleh dilengkapi surat dokter belakangan untuk tanggal yang sama — TAPI ini **tidak membuat baris baru**, melainkan **memperbarui baris yang sudah ada** (`suratDokter`, `alasan`, tanggal ikut diperbarui ke nilai submisi terbaru). Efeknya: penghitungan izin (jumlah hari, rekap, kehadiran, dashboard) **tetap terhitung 1 hari**, bukan 2 — karena datanya memang tetap satu baris di semua tempat, tidak perlu logika dedup terpisah di tiap laporan. Notifikasi admin untuk kasus ini berbunyi "Surat dokter dilampirkan" (beda dari "Pengajuan izin baru"). Kalau izin yang sudah ada **sudah punya** surat dokter, pengajuan susulan tetap dianggap duplikat biasa (ditolak) — pengecualian ini hanya berlaku sekali, dari tanpa ke dengan.
+
+Cek tumpang tindih pakai overlap tanggal standar (`tanggalMulai <= akhir baru` DAN `tanggalAkhir >= mulai baru`), bukan cuma kecocokan persis — jadi izin 3 hari yang beririsan sebagian dengan pengajuan baru juga kena tolak, bukan cuma yang identik.
+
+Logika ada di `buatIzin()` (`lib/pengajuan-izin.ts`), jadi otomatis berlaku di **kedua jalur**: karyawan mengajukan sendiri (`/api/izin`) dan admin mengajukan atas nama karyawan (`/api/admin/karyawan/[id]/izin`) — tidak ada endpoint baru.
+**User yang memakai:** Karyawan, Admin, Owner
+
 #### Feature 29 — Tipe Izin & Waktu Pengajuan di Laporan Izin "Per Karyawan" ✅
 **Deskripsi:** Kolom "Tanggal Izin" di tab **Per Karyawan** (halaman Laporan Izin, Feature 25) dan sheet **"Per Karyawan"** di file export Excel (Feature 22/24) diganti nama jadi **"Detail Izin"**, isinya diperkaya: tiap baris pengajuan sekarang menampilkan **jenis izin** dan **tanggal + jam saat karyawan mengajukan lewat webapp** (`createdAt`, bukan tanggal izinnya) — bukan cuma daftar tanggal izin polos.
 
 Format per entri: `"{Jenis Izin} — {tanggal izin} (diajukan {tanggal, jam})"`, contoh: `"Izin Sakit — 8 Agu 2026 – 9 Agu 2026 (diajukan 8 Agu 2026, 08.18)"`. Di web tiap entri jadi baris list terpisah dengan badge jenis; di Excel digabung `\n` dalam satu sel (tinggi baris di-set manual `k.tanggal.length * 15` supaya tidak terpotong). Endpoint `GET /api/admin/rekap-izin` diperluas mengembalikan `createdAt` per izin (sebelumnya cuma dipakai internal di sheet "Rekap Izin" export, sekarang juga sampai ke halaman web). Sheet "Rekap Izin" & tab "Rincian" TIDAK diubah — sudah punya jenis & (untuk sheet Excel) tanggal pengajuan sebelumnya, cuma tab Per Karyawan yang diminta.
+
+**Susulan:** halaman **`/admin/izin`** (Feature 28) juga ditambah kolom **"Diajukan"** (tanggal + jam `createdAt`, format sama `formatWaktuInput()`) di antara kolom Tanggal dan Alasan — supaya admin yang memproses persetujuan langsung tahu kapan pengajuannya masuk, bukan cuma pas lihat laporan.
 **User yang memakai:** Admin, Owner
 
 #### Feature 27 — Feedback Admin Saat Setujui/Tolak Izin & Tukar Libur ✅

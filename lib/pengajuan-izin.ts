@@ -15,6 +15,36 @@ import {
 // konstanta di sana tetap aman diimpor komponen client (app/karyawan/izin,
 // app/admin/karyawan/[id]) tanpa ikut menyeret fs/promises ke bundle browser.
 
+function formatTanggalIndo(d: Date) {
+  return d.toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+// Validasi format/ukuran lalu simpan file surat dokter ke disk/Blob.
+// Dipisah supaya bisa dipakai baik di jalur "buat izin baru" maupun jalur
+// "lampirkan surat dokter ke izin sakit yang sudah ada" (lihat buatIzin()).
+async function simpanSuratValidasi(
+  fileSurat: File
+): Promise<{ ok: true; namaFile: string } | { ok: false; status: number; pesan: string }> {
+  const ekstensi = TIPE_SURAT[fileSurat.type];
+  if (!ekstensi) {
+    return {
+      ok: false,
+      status: 400,
+      pesan: "Format surat dokter harus PDF, JPG, atau PNG",
+    };
+  }
+  if (fileSurat.size > MAKS_UKURAN_SURAT) {
+    return { ok: false, status: 400, pesan: "Ukuran surat dokter maksimal 5 MB" };
+  }
+  const namaFile = `${randomUUID()}.${ekstensi}`;
+  await simpanSurat(namaFile, Buffer.from(await fileSurat.arrayBuffer()), fileSurat.type);
+  return { ok: true, namaFile };
+}
+
 export type BuatIzinInput = {
   userId: string; // pemilik izin (karyawan ybs)
   namaKaryawan: string; // untuk notifikasi ke admin/owner
@@ -78,26 +108,70 @@ export async function buatIzin(input: BuatIzinInput): Promise<HasilBuatIzin> {
     }
   }
 
-  // Simpan surat dokter (hanya untuk izin sakit)
-  let namaFile: string | null = null;
-  if (jenis === "SAKIT" && fileSurat) {
-    const ekstensi = TIPE_SURAT[fileSurat.type];
-    if (!ekstensi) {
+  // Cegah duplikasi: jenis izin sama + tanggal tumpang tindih dengan pengajuan
+  // yang masih MENUNGGU atau sudah DISETUJUI. Izin yang sudah DITOLAK TIDAK
+  // menghalangi pengajuan ulang (karyawan boleh coba lagi).
+  const sudahAda = await prisma.izin.findFirst({
+    where: {
+      userId,
+      jenis: jenis as JenisIzin,
+      status: { in: ["MENUNGGU", "DISETUJUI"] },
+      tanggalMulai: { lte: new Date(tanggalAkhir) },
+      tanggalAkhir: { gte: new Date(tanggalMulai) },
+    },
+  });
+  if (sudahAda) {
+    // PENGECUALIAN: izin Sakit yang tadinya tanpa surat dokter boleh dilengkapi
+    // dengan surat dokter belakangan — bukan dianggap pengajuan baru yang
+    // duplikat, tapi MELENGKAPI baris yang sudah ada (bukan bikin baris baru).
+    // Ini juga yang membuat penghitungan izin tetap 1 hari, bukan 2 — karena
+    // datanya memang tetap satu baris, di semua laporan/rekap/kehadiran.
+    const lengkapiSuratDokter =
+      jenis === "SAKIT" && !sudahAda.suratDokter && !!fileSurat;
+
+    if (!lengkapiSuratDokter) {
+      const rentang =
+        sudahAda.tanggalMulai.getTime() === sudahAda.tanggalAkhir.getTime()
+          ? formatTanggalIndo(sudahAda.tanggalMulai)
+          : `${formatTanggalIndo(sudahAda.tanggalMulai)} – ${formatTanggalIndo(sudahAda.tanggalAkhir)}`;
+      const statusLabel = sudahAda.status === "MENUNGGU" ? "menunggu" : "disetujui";
       return {
         ok: false,
         status: 400,
-        pesan: "Format surat dokter harus PDF, JPG, atau PNG",
+        pesan: `${LABEL_JENIS_IZIN[jenis as JenisIzin]} untuk tanggal ${rentang} sudah pernah diajukan sebelumnya (status: ${statusLabel}). Tidak bisa mengajukan izin jenis yang sama untuk tanggal yang sama/tumpang tindih.`,
       };
     }
-    if (fileSurat.size > MAKS_UKURAN_SURAT) {
-      return { ok: false, status: 400, pesan: "Ukuran surat dokter maksimal 5 MB" };
-    }
-    namaFile = `${randomUUID()}.${ekstensi}`;
-    await simpanSurat(
-      namaFile,
-      Buffer.from(await fileSurat.arrayBuffer()),
-      fileSurat.type
-    );
+
+    const hasilSurat = await simpanSuratValidasi(fileSurat!);
+    if (!hasilSurat.ok) return hasilSurat;
+
+    const izinTerbaru = await prisma.izin.update({
+      where: { id: sudahAda.id },
+      data: {
+        suratDokter: hasilSurat.namaFile,
+        alasan: alasan || sudahAda.alasan,
+        tanggalMulai: new Date(tanggalMulai),
+        tanggalAkhir: new Date(tanggalAkhir),
+      },
+    });
+
+    await kirimNotifKeAdmin({
+      judul: "Surat dokter dilampirkan",
+      isi: `${namaKaryawan} melampirkan surat dokter untuk izin sakit ${formatTanggalIndo(
+        izinTerbaru.tanggalMulai
+      )}`,
+      url: "/admin",
+    }).catch(() => {});
+
+    return { ok: true, izin: izinTerbaru };
+  }
+
+  // Simpan surat dokter (hanya untuk izin sakit)
+  let namaFile: string | null = null;
+  if (jenis === "SAKIT" && fileSurat) {
+    const hasilSurat = await simpanSuratValidasi(fileSurat);
+    if (!hasilSurat.ok) return hasilSurat;
+    namaFile = hasilSurat.namaFile;
   }
 
   const izin = await prisma.izin.create({
