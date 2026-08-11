@@ -1,6 +1,6 @@
 # Ringkasan Sesi — Portal Toko Marmo
 
-**Versi: v9** — diperbarui 2026-08-11
+**Versi: v10** — diperbarui 2026-08-11
 
 > Ditulis untuk melanjutkan pekerjaan di sesi Claude Code baru. Baca ini + `docs/PRD.md` (kebenaran tunggal fitur, sekarang sampai **Feature 29**) + `AGENTS.md` (manual operasi & aturan kerja, sekarang 18 kesalahan umum) sebelum lanjut.
 
@@ -8,13 +8,11 @@
 
 **Live di produksi:** https://portal-karyawan-theta.vercel.app **dan** domain custom **https://www.marmo.my.id** (alias ke deployment yang sama). Database **PostgreSQL (Neon)** — dev lokal dan produksi **berbagi database yang sama persis**, jadi perubahan schema/data lokal langsung berlaku di produksi juga. File surat dokter di **Vercel Blob**.
 
-**Deploy terakhir:** commit `4036432` ("jenis izin Setengah Hari + dikecualikan dari persentase kehadiran") — 4 Agu 2026, status READY di kedua domain. Diverifikasi di produksi: SETENGAH_HARI rentang 2 hari ditolak 400, satu tanggal disetujui → kehadiran tetap 100%. Deployment dicek lewat `GET /v6/deployments/{id}/files` — **tidak ada `.env`/secret yang ikut ter-upload**.
+**Deploy terakhir:** commit `6fc02de` ("feedback admin, halaman kelola izin, detail izin per karyawan") — 11 Agu 2026, status READY di kedua domain. Diverifikasi di produksi: `/admin/izin` 200 dengan 2 MENUNGGU, tolak-dengan-feedback tersimpan & 403 untuk karyawan sendiri, sheet Excel "Per Karyawan" sudah kolom "Detail Izin". Deployment dicek lewat `GET /v6/deployments/{id}/files` — **tidak ada `.env`/secret yang ikut ter-upload**.
 
 Catatan: schema `Catatan` ter-migrate ke Neon yang **dipakai bersama dev & produksi**, jadi perubahan schema lokal langsung berlaku di produksi.
 
-⚠️ **Feature 27–29 (di bawah) BELUM di-deploy** — selesai & diverifikasi lokal, produksi masih di `4036432`.
-
-## Fitur terbaru (Feature 27–29 di PRD) — sesi 11 Agu 2026
+## Fitur terbaru (Feature 27–29 di PRD) — sesi 11 Agu 2026, sudah di-deploy
 
 ### Feature 27 — Feedback admin saat tolak Izin/Tukar Libur
 Klik **Tolak** (dashboard, `/admin/tukar-libur`) sekarang buka **modal** (`components/ModalTolakPengajuan.tsx`) dengan kolom feedback **opsional**.
@@ -167,7 +165,8 @@ Setiap kali file ini diperbarui: naikkan **Versi** di judul +1, lalu tambah satu
 
 | Versi | Tanggal | Ringkasan perubahan |
 |---|---|---|
-| v9 | 2026-08-11 | **Feature 28** (bug fix: halaman `/admin/izin` + link kartu "Izin Menunggu" yang tadinya buntu, kesalahan #18 dicatat) & **Feature 29** (kolom Detail Izin: jenis + jam pengajuan di Laporan Izin Per Karyawan & export). Belum di-deploy. |
+| v10 | 2026-08-11 | Feature 27–29 **di-deploy ke produksi** (commit `6fc02de`, READY, diverifikasi langsung di www.marmo.my.id — halaman `/admin/izin`, feedback tolak, sheet Excel Detail Izin). |
+| v9 | 2026-08-11 | **Feature 28** (bug fix: halaman `/admin/izin` + link kartu "Izin Menunggu" yang tadinya buntu, kesalahan #18 dicatat) & **Feature 29** (kolom Detail Izin: jenis + jam pengajuan di Laporan Izin Per Karyawan & export). Di-deploy `6fc02de`. |
 | v8 | 2026-08-11 | **Feature 27** (feedback admin opsional saat tolak Izin/Tukar Libur — modal, `feedbackAdmin`, tampil ke karyawan + ikut notifikasi). Belum di-deploy. |
 | v7 | 2026-08-04 | Feature 26 (+ susulan pengecualian kehadiran) **di-deploy ke produksi** (commit `4036432`, READY, diverifikasi langsung di www.marmo.my.id). |
 | v6 | 2026-08-04 | Susulan Feature 26: Izin Setengah Hari dikecualikan PENUH dari persentase kehadiran (bukan 0,5 hari) via `JENIS_TIDAK_HITUNG_KEHADIRAN`. Belum di-deploy. |
