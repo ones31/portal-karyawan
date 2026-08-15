@@ -25,6 +25,7 @@ export async function GET(
     select: {
       id: true,
       nama: true,
+      nip: true,
       email: true,
       phone: true,
       lokasi: true,
@@ -79,6 +80,7 @@ export async function PATCH(
 
   const {
     nama,
+    nip,
     email,
     phone,
     lokasi,
@@ -118,6 +120,15 @@ export async function PATCH(
       return NextResponse.json({ error: "Email sudah terdaftar" }, { status: 400 });
     }
   }
+  if (nip && nip !== user.nip) {
+    const nipDipakai = await prisma.user.findUnique({ where: { nip } });
+    if (nipDipakai) {
+      return NextResponse.json(
+        { error: "NIP sudah dipakai karyawan lain" },
+        { status: 400 }
+      );
+    }
+  }
   if (lokasi && !lokasiValid(lokasi)) {
     return NextResponse.json({ error: "Lokasi tidak valid" }, { status: 400 });
   }
@@ -153,6 +164,7 @@ export async function PATCH(
     where: { id },
     data: {
       nama,
+      nip: nip || null,
       email: email || null,
       phone: phone || null,
       lokasi: lokasi || null,
@@ -183,7 +195,7 @@ export async function PATCH(
           }
         : {}),
     },
-    select: { id: true, nama: true, email: true, phone: true, lokasi: true },
+    select: { id: true, nama: true, nip: true, email: true, phone: true, lokasi: true },
   });
 
   // Admin juga bisa memperbarui data pribadi (profil) karyawan

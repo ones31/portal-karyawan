@@ -1,18 +1,30 @@
 # Ringkasan Sesi — Portal Toko Marmo
 
-**Versi: v14** — diperbarui 2026-08-11
+**Versi: v15** — diperbarui 2026-08-15
 
-> Ditulis untuk melanjutkan pekerjaan di sesi Claude Code baru. Baca ini + `docs/PRD.md` (kebenaran tunggal fitur, sekarang sampai **Feature 30**) + `AGENTS.md` (manual operasi & aturan kerja, sekarang 18 kesalahan umum) sebelum lanjut.
+> Ditulis untuk melanjutkan pekerjaan di sesi Claude Code baru. Baca ini + `docs/PRD.md` (kebenaran tunggal fitur, sekarang sampai **Feature 31**) + `AGENTS.md` (manual operasi & aturan kerja, sekarang 18 kesalahan umum) sebelum lanjut.
 
 ## Status saat ini
 
 **Live di produksi:** https://portal-karyawan-theta.vercel.app **dan** domain custom **https://www.marmo.my.id** (alias ke deployment yang sama). Database **PostgreSQL (Neon)** — dev lokal dan produksi **berbagi database yang sama persis**, jadi perubahan schema/data lokal langsung berlaku di produksi juga. File surat dokter di **Vercel Blob**.
 
-**Deploy terakhir:** commit `8aec394` ("kolom Diajukan di /admin/izin, cegah duplikasi izin, izinkan lengkapi surat dokter") — 11 Agu 2026, status READY di kedua domain. Diverifikasi di produksi: kolom Diajukan tampil, kirim SAKIT tanpa surat dokter lalu lengkapi dengan surat dokter → ID sama (update, bukan baris baru), kirim lagi setelah ada surat dokter → 400 duplikat. Deployment dicek lewat `GET /v6/deployments/{id}/files` — **tidak ada `.env`/secret yang ikut ter-upload**.
+**Deploy terakhir:** commit `8aec394` ("kolom Diajukan di /admin/izin, cegah duplikasi izin, izinkan lengkapi surat dokter") — 11 Agu 2026, status READY di kedua domain.
+
+⚠️ **Feature 31 (NIP karyawan, di bawah) BELUM di-deploy** — migrasi & import data sudah jalan di database (Neon **bersama** dev+produksi, jadi datanya sudah ada di sana), tapi KODE UI/API-nya (kolom NIP, form) belum ikut deploy — produksi masih menjalankan kode lama yang tidak menampilkan/menerima field `nip` sampai commit berikutnya di-deploy.
 
 Catatan: schema `Catatan` ter-migrate ke Neon yang **dipakai bersama dev & produksi**, jadi perubahan schema lokal langsung berlaku di produksi.
 
-## Fitur terbaru (Feature 27–30 di PRD) — sesi 11 Agu 2026, sudah di-deploy
+## Fitur terbaru (Feature 31 di PRD) — sesi 15 Agu 2026
+
+### Feature 31 — NIP (Nomor Induk Pegawai) karyawan
+User kirim daftar NIP (nomor PIN mesin fingerprint) + nama, minta diimpor ke Portal Karyawan. Field baru `User.nip` (opsional, unik) — **beda dari `ProfilKaryawan.nik`** (itu NIK KTP, jangan tertukar).
+- Kolom **"NIP"** di Daftar Karyawan (setelah Nama), field editable di Edit Karyawan, field opsional di form Tambah Karyawan
+- Validasi unik: NIP yang sudah dipakai karyawan lain ditolak 400 dengan pesan jelas
+- **Migrasi dibuat manual** (bukan `prisma migrate dev`) karena environment non-interactive menolak prompt konfirmasi unique-constraint-warning — file SQL ditulis tangan mengikuti pola migrasi Prisma yang sudah ada, lalu diterapkan via `prisma migrate deploy` (non-interactive, aman)
+- **Impor data**: `prisma/import-nip-karyawan.ts`, 23 dari 24 baris sumber berhasil dicocokkan (aman dijalankan ulang, skip yang sudah ada NIP). **"SURYANA" (NIP 3016) tidak ditemukan** di database — dilewati, perlu klarifikasi user (karyawan baru belum terdaftar, atau salah eja?). Tiga nama butuh koreksi ejaan sumber→DB: `MISGIONO`→`Misgiyono`, `MELI`→`Melly`, `ILHAM KAR`→`Ilham Kar.` — dicocokkan berdasar kemiripan jelas, dicatat di komentar script, BUKAN ditebak sembarangan
+- Diuji: NIP tampil benar di Daftar Karyawan & Edit Karyawan (dicek Akmal=3035, Andrew=3009, dll cocok persis sumber), validasi duplikat NIP ditolak 400, ubah+kembalikan NIP Akmal berhasil, responsif 375px tanpa overflow
+
+## Fitur sesi sebelumnya (Feature 27–30 di PRD) — 11 Agu 2026, sudah di-deploy
 
 ### Feature 27 — Feedback admin saat tolak Izin/Tukar Libur
 Klik **Tolak** (dashboard, `/admin/tukar-libur`) sekarang buka **modal** (`components/ModalTolakPengajuan.tsx`) dengan kolom feedback **opsional**.
@@ -163,7 +175,7 @@ Kalau schema Prisma berubah: `npx prisma migrate dev --name <nama>` lalu **resta
 
 ## Dokumen rujukan di repo
 
-- **`docs/PRD.md`** — 30 fitur ✅, data model (termasuk `lokasiAkses`, `tetapManual`, `feedbackAdmin` & entity `Catatan`), fase project. **Selalu update setiap fitur baru.**
+- **`docs/PRD.md`** — 31 fitur ✅, data model (termasuk `lokasiAkses`, `tetapManual`, `feedbackAdmin`, `nip` & entity `Catatan`), fase project. **Selalu update setiap fitur baru.**
 - **`AGENTS.md`** — manual operasi: stack terkunci, konstanta bisnis per file `lib/`, **18 kesalahan umum** + aturan penangkalnya, kapan harus berhenti & bertanya.
 - **`.claude/skills/`** — `verifikasi-portal`, `tambah-fitur-portal`, `impor-karyawan`.
 
@@ -179,6 +191,7 @@ Setiap kali file ini diperbarui: naikkan **Versi** di judul +1, lalu tambah satu
 
 | Versi | Tanggal | Ringkasan perubahan |
 |---|---|---|
+| v15 | 2026-08-15 | **Feature 31** (field `User.nip` + kolom/form di Daftar & Edit Karyawan; impor 23/24 NIP dari data user, "Suryana" tidak ditemukan). Migrasi & data sudah di Neon (shared dev+prod), tapi kode UI/API belum di-deploy. |
 | v14 | 2026-08-11 | Feature 28 (kolom Diajukan) & 30 (+ revisi lengkapi surat dokter) **di-deploy ke produksi** (commit `8aec394`, READY, diverifikasi langsung di www.marmo.my.id — update-bukan-baris-baru & blokir duplikat dikonfirmasi kerja). |
 | v13 | 2026-08-11 | Revisi Feature 30: izin Sakit tanpa surat dokter boleh dilengkapi surat dokter belakangan (UPDATE baris, bukan baris baru) — koreksi dari contoh nyata Haryanto yang user tunjukkan. Belum di-deploy. |
 | v12 | 2026-08-11 | **Feature 30** (cegah duplikasi izin jenis sama + tanggal tumpang tindih, izin DITOLAK tidak menghalangi ajuan ulang). Belum di-deploy. |

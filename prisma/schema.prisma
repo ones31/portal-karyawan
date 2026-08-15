@@ -42,6 +42,7 @@ model User {
   email     String?  @unique
   password  String
   nama      String   @unique
+  nip       String?  @unique // Nomor Induk Pegawai (nomor PIN mesin fingerprint), diisi admin
   phone     String?
   lokasi    String?  // "Tegal Alur" | "Menceng" — lokasi kerja (karyawan)
   lokasiAkses String? // "Tegal Alur" | "Menceng" — untuk role ADMIN: lokasi yang boleh dilihat/dikelola. null/SUPER_ADMIN = tanpa batasan.

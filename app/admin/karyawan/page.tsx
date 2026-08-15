@@ -11,6 +11,7 @@ const DAFTAR_LOKASI = ["Tegal Alur", "Menceng"];
 type Karyawan = {
   id: string;
   nama: string;
+  nip: string | null;
   email: string | null;
   phone: string | null;
   lokasi: string | null;
@@ -55,6 +56,7 @@ export default function DaftarKaryawanPage() {
   const [tampilForm, setTampilForm] = useState(false);
   const [form, setForm] = useState({
     nama: "",
+    nip: "",
     email: "",
     phone: "",
     lokasi: "",
@@ -117,6 +119,7 @@ export default function DaftarKaryawanPage() {
     }
     setForm({
       nama: "",
+      nip: "",
       email: "",
       phone: "",
       lokasi: lokasiOpsi.length === 1 ? lokasiOpsi[0] : "",
@@ -204,6 +207,14 @@ export default function DaftarKaryawanPage() {
               required
               value={form.nama}
               onChange={(e) => setForm({ ...form, nama: e.target.value })}
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium">NIP (opsional)</label>
+            <input
+              value={form.nip}
+              onChange={(e) => setForm({ ...form, nip: e.target.value })}
               className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
             />
           </div>
@@ -339,6 +350,7 @@ export default function DaftarKaryawanPage() {
             <thead>
               <tr className="border-b border-slate-200 text-slate-500">
                 <th className="py-2 pr-4">Nama</th>
+                <th className="py-2 pr-4">NIP</th>
                 <th className="py-2 pr-4">Lokasi</th>
                 <th className="py-2 pr-4">Tgl Masuk</th>
                 <th className="py-2 pr-4">Telepon</th>
@@ -371,6 +383,9 @@ export default function DaftarKaryawanPage() {
                       {k.email && (
                         <p className="text-xs text-slate-500">{k.email}</p>
                       )}
+                    </td>
+                    <td className="py-3 pr-4 whitespace-nowrap">
+                      {k.nip ?? <span className="text-slate-400">—</span>}
                     </td>
                     <td className="py-3 pr-4 whitespace-nowrap">
                       {k.lokasi ?? <span className="text-slate-400">—</span>}

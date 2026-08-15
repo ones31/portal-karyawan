@@ -47,6 +47,7 @@ const PROFIL_FIELDS: {
 type Detail = {
   id: string;
   nama: string;
+  nip: string | null;
   email: string | null;
   phone: string | null;
   lokasi: string | null;
@@ -94,6 +95,7 @@ export default function EditKaryawanPage() {
   const [tidakDitemukan, setTidakDitemukan] = useState(false);
   const [form, setForm] = useState({
     nama: "",
+    nip: "",
     email: "",
     phone: "",
     lokasi: "",
@@ -144,6 +146,7 @@ export default function EditKaryawanPage() {
         setDetail(karyawan);
         setForm({
           nama: karyawan.nama,
+          nip: karyawan.nip ?? "",
           email: karyawan.email ?? "",
           phone: karyawan.phone ?? "",
           lokasi: karyawan.lokasi ?? "",
@@ -327,6 +330,16 @@ export default function EditKaryawanPage() {
             required
             value={form.nama}
             onChange={(e) => setForm({ ...form, nama: e.target.value })}
+            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium">
+            NIP (nomor PIN fingerprint, opsional)
+          </label>
+          <input
+            value={form.nip}
+            onChange={(e) => setForm({ ...form, nip: e.target.value })}
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
           />
         </div>

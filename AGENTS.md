@@ -54,6 +54,7 @@ Server dev: `npm run dev` di port **3000** (user sering membukanya di browser se
 - Surat dokter = dokumen medis: hanya pemilik izin & admin/owner yang boleh membuka (`/api/izin/surat/[nama]`).
 - Notifikasi push: pengajuan baru → admin+owner; hasil approval → karyawan ybs. Pemanggilan notif SELALU `await ...catch(() => {})` — tidak boleh menggagalkan mutasi utamanya.
 - Password karyawan impor = `123` (memang lemah; keputusan user untuk jaringan internal — JANGAN diubah tanpa diminta).
+- `User.nip` (Feature 31) = nomor PIN mesin fingerprint, BEDA dari `ProfilKaryawan.nik` (NIK KTP) — jangan tertukar. Opsional, unik (cek manual di route, bukan cuma andalkan constraint DB, supaya pesan errornya ramah).
 - Admin ber-lokasi (Feature 19): `ADMIN` bisa dibatasi ke satu lokasi via `User.lokasiAkses`. Query karyawan/izin/tukar-libur/kontrak untuk admin WAJIB lewat `filterLokasiSesi(sesi)` (list) atau `bolehAksesLokasi(sesi, lokasi)` (satu record) dari `lib/auth.ts` — jangan query langsung tanpa itu. `SUPER_ADMIN` (owner) tidak dibatasi.
 
 **Akun untuk pengujian (hafalkan):**

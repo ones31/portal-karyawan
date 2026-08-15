@@ -25,6 +25,7 @@ export async function GET(req: Request) {
     select: {
       id: true,
       nama: true,
+      nip: true,
       email: true,
       phone: true,
       lokasi: true,
@@ -49,6 +50,7 @@ export async function GET(req: Request) {
   const hasil = karyawan.map((k) => ({
     id: k.id,
     nama: k.nama,
+    nip: k.nip,
     email: k.email,
     phone: k.phone,
     lokasi: k.lokasi,
@@ -71,7 +73,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Akses ditolak" }, { status: 403 });
   }
 
-  const { nama, email, phone, lokasi, password, role, mulaiKontrak, akhirKontrak, lokasiAkses } =
+  const { nama, nip, email, phone, lokasi, password, role, mulaiKontrak, akhirKontrak, lokasiAkses } =
     await req.json();
 
   const roleBaru = role === "ADMIN" ? "ADMIN" : "KARYAWAN";
@@ -127,10 +129,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Email sudah terdaftar" }, { status: 400 });
     }
   }
+  if (nip) {
+    const nipAda = await prisma.user.findUnique({ where: { nip } });
+    if (nipAda) {
+      return NextResponse.json({ error: "NIP sudah dipakai karyawan lain" }, { status: 400 });
+    }
+  }
 
   const user = await prisma.user.create({
     data: {
       nama,
+      nip: nip || null,
       email: email || null,
       phone: phone || null,
       lokasi: lokasiValid(lokasi) ? lokasi : null,

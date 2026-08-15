@@ -250,6 +250,14 @@ Datanya diambil dari `GET /api/admin/rekap-izin` yang sudah ada (ter-scope lokas
 Dibuat halaman baru **`/admin/izin`** (pola sama persis dengan `/admin/tukar-libur`): tabel semua pengajuan izin ter-scope lokasi, diurutkan **MENUNGGU dulu** (`orderBy: [{status:"asc"},{createdAt:"desc"}]`, memanfaatkan urutan native enum `StatusIzin` di schema), tombol **Setujui/Tolak** per baris (Tolak pakai `ModalTolakPengajuan`, Feature 27), badge jumlah "N menunggu" di judul. Endpoint baru `GET /api/admin/izin`. Kartu dashboard "Izin Menunggu" sekarang link ke halaman ini.
 **User yang memakai:** Admin, Owner
 
+#### Feature 31 — NIP (Nomor Induk Pegawai) Karyawan ✅
+**Deskripsi:** Field baru `User.nip` — nomor PIN mesin fingerprint (beda dari `nik` di `ProfilKaryawan`, itu NIK KTP). Opsional, unik antar-karyawan (ditolak 400 kalau dipakai karyawan lain). Diisi admin/owner, bukan oleh karyawan sendiri saat onboarding — sama seperti `lokasi`/`tanggalMasuk`.
+
+Tampil sebagai kolom **"NIP"** di Daftar Karyawan (tepat setelah Nama), field editable di Edit Karyawan, dan field opsional di form Tambah Karyawan.
+
+**Impor data awal:** 23 dari 24 NIP yang dikirim user berhasil dicocokkan & diisi lewat `prisma/import-nip-karyawan.ts` (aman dijalankan ulang — skip yang sudah ada NIP, tidak menimpa). Satu nama ("SURYANA", NIP 3016) **tidak ditemukan** di database, dilewati — perlu klarifikasi user apakah itu karyawan baru yang belum terdaftar atau nama yang salah eja. Tiga pencocokan memerlukan koreksi ejaan sumber→database: `MISGIONO`→`Misgiyono`, `MELI`→`Melly`, `ILHAM KAR`→`Ilham Kar.` (asumsi typo, dicatat di komentar script untuk audit).
+**User yang memakai:** Admin, Owner
+
 #### Feature 30 — Cegah Duplikasi Pengajuan Izin ✅
 **Deskripsi:** Karyawan (atau admin atas nama karyawan) tidak bisa mengajukan izin **jenis yang sama** untuk tanggal yang **sama atau tumpang tindih** dengan pengajuan yang **masih MENUNGGU atau sudah DISETUJUI**. Ditolak **400** dengan pesan yang menyebut detail pengajuan sebelumnya, contoh:
 
@@ -321,6 +329,7 @@ Otomatis ikut di semua tempat yang sudah generik lewat `JENIS_IZIN`/`LABEL_JENIS
 | Field | Keterangan |
 |---|---|
 | name | dipakai untuk login (unik) |
+| nip | Nomor Induk Pegawai / nomor PIN fingerprint (Feature 31), opsional, unik. Beda dari `nik` di ProfilKaryawan (NIK KTP) |
 | password | di-hash (bcrypt) |
 | role | dropdown: `admin` dan `karyawan` (pilihan `admin` hanya muncul untuk owner) |
 | statusAkun | `MENUNGGU` / `AKTIF` / `DITOLAK`, default `AKTIF`. Pendaftaran mandiri mulai `MENUNGGU` sampai admin approve (Feature 16); `DITOLAK` memblokir login |
