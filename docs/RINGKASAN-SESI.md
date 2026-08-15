@@ -1,6 +1,6 @@
 # Ringkasan Sesi — Portal Toko Marmo
 
-**Versi: v15** — diperbarui 2026-08-15
+**Versi: v16** — diperbarui 2026-08-15
 
 > Ditulis untuk melanjutkan pekerjaan di sesi Claude Code baru. Baca ini + `docs/PRD.md` (kebenaran tunggal fitur, sekarang sampai **Feature 31**) + `AGENTS.md` (manual operasi & aturan kerja, sekarang 18 kesalahan umum) sebelum lanjut.
 
@@ -8,13 +8,13 @@
 
 **Live di produksi:** https://portal-karyawan-theta.vercel.app **dan** domain custom **https://www.marmo.my.id** (alias ke deployment yang sama). Database **PostgreSQL (Neon)** — dev lokal dan produksi **berbagi database yang sama persis**, jadi perubahan schema/data lokal langsung berlaku di produksi juga. File surat dokter di **Vercel Blob**.
 
-**Deploy terakhir:** commit `8aec394` ("kolom Diajukan di /admin/izin, cegah duplikasi izin, izinkan lengkapi surat dokter") — 11 Agu 2026, status READY di kedua domain.
+**Deploy terakhir:** commit `a3d5c3b` ("tambah field NIP karyawan + impor data dari fingerprint") — 15 Agu 2026, status READY di kedua domain. Diverifikasi di produksi: kolom NIP terisi benar (Haryanto=2005, Azmi=3050, Andrew=3009), `/admin/karyawan` render normal. Deployment dicek lewat `GET /v6/deployments/{id}/files` — **tidak ada `.env`/secret yang ikut ter-upload**.
 
-⚠️ **Feature 31 (NIP karyawan, di bawah) BELUM di-deploy** — migrasi & import data sudah jalan di database (Neon **bersama** dev+produksi, jadi datanya sudah ada di sana), tapi KODE UI/API-nya (kolom NIP, form) belum ikut deploy — produksi masih menjalankan kode lama yang tidak menampilkan/menerima field `nip` sampai commit berikutnya di-deploy.
+⚠️ **Insiden non-kode saat deploy ini**: token Vercel statis di `~/.vercel-token` mendadak kena `Not authorized... must re-authenticate to this scope` untuk tim **marmotoko** (`saml: true` di respons API — kemungkinan tim baru mengaktifkan SSO/SAML, token API lama jadi tidak cukup). **Bukan bug kode.** Solusi: `vercel login` interaktif (device auth flow, user login manual lewat browser) — begitu berhasil, `vercel deploy` langsung normal lagi tanpa perlu `--token` eksplisit (pakai sesi CLI yang baru). Kalau kejadian lagi di sesi depan, ulangi pola ini: `vercel login` → tunggu user konfirmasi sudah login di browser → `vercel whoami`/`vercel teams ls` untuk verifikasi → lanjut `vercel deploy --prod --yes` tanpa `--token`.
 
 Catatan: schema `Catatan` ter-migrate ke Neon yang **dipakai bersama dev & produksi**, jadi perubahan schema lokal langsung berlaku di produksi.
 
-## Fitur terbaru (Feature 31 di PRD) — sesi 15 Agu 2026
+## Fitur terbaru (Feature 31 di PRD) — sesi 15 Agu 2026, sudah di-deploy
 
 ### Feature 31 — NIP (Nomor Induk Pegawai) karyawan
 User kirim daftar NIP (nomor PIN mesin fingerprint) + nama, minta diimpor ke Portal Karyawan. Field baru `User.nip` (opsional, unik) — **beda dari `ProfilKaryawan.nik`** (itu NIK KTP, jangan tertukar).
@@ -154,7 +154,7 @@ Login **tidak case-sensitive**.
 ## Alat & kredensial yang tersedia di Mac ini
 
 - **`gh` CLI** — login sebagai `ones31`
-- **`vercel` CLI** — token di `~/.vercel-token` (`export VERCEL_TOKEN=$(cat ~/.vercel-token | tr -d '\n')` sebelum `vercel ... --token "$VERCEL_TOKEN"`)
+- **`vercel` CLI** — coba dulu token di `~/.vercel-token` (`export VERCEL_TOKEN=$(cat ~/.vercel-token | tr -d '\n')` sebelum `vercel ... --token "$VERCEL_TOKEN"`). **Kalau muncul `Not authorized... must re-authenticate to this scope "marmotoko"`** (token statis basi/tim aktifkan SSO), token itu tidak bisa dipakai lagi — jalankan `vercel login` (device auth, minta user login lewat browser), lalu `vercel deploy --prod --yes` TANPA `--token` (pakai sesi CLI hasil login, bukan token lama).
 - **Neon** — `DATABASE_URL` di `.env` project
 - **AnyDesk** — sudah terinstal (dibahas untuk akses remote ke Mac ini, tidak jadi dipakai untuk coding — lihat catatan di bawah)
 - **OpenClaw** — Gateway jalan lokal (`openclaw status`), channel Telegram aktif (target `telegram:173364209`)
@@ -191,6 +191,7 @@ Setiap kali file ini diperbarui: naikkan **Versi** di judul +1, lalu tambah satu
 
 | Versi | Tanggal | Ringkasan perubahan |
 |---|---|---|
+| v16 | 2026-08-15 | Feature 31 **di-deploy ke produksi** (commit `a3d5c3b`, READY, diverifikasi langsung di www.marmo.my.id — NIP tampil benar). Insiden: token Vercel statis basi (tim aktifkan SSO), diperbaiki via `vercel login` interaktif — dicatat di "Alat & kredensial" untuk sesi depan. |
 | v15 | 2026-08-15 | **Feature 31** (field `User.nip` + kolom/form di Daftar & Edit Karyawan; impor 23/24 NIP dari data user, "Suryana" tidak ditemukan). Migrasi & data sudah di Neon (shared dev+prod), tapi kode UI/API belum di-deploy. |
 | v14 | 2026-08-11 | Feature 28 (kolom Diajukan) & 30 (+ revisi lengkapi surat dokter) **di-deploy ke produksi** (commit `8aec394`, READY, diverifikasi langsung di www.marmo.my.id — update-bukan-baris-baru & blokir duplikat dikonfirmasi kerja). |
 | v13 | 2026-08-11 | Revisi Feature 30: izin Sakit tanpa surat dokter boleh dilengkapi surat dokter belakangan (UPDATE baris, bukan baris baru) — koreksi dari contoh nyata Haryanto yang user tunjukkan. Belum di-deploy. |
