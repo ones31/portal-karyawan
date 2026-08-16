@@ -1,6 +1,6 @@
 # Ringkasan Sesi — Portal Toko Marmo
 
-**Versi: v16** — diperbarui 2026-08-15
+**Versi: v17** — diperbarui 2026-08-15
 
 > Ditulis untuk melanjutkan pekerjaan di sesi Claude Code baru. Baca ini + `docs/PRD.md` (kebenaran tunggal fitur, sekarang sampai **Feature 31**) + `AGENTS.md` (manual operasi & aturan kerja, sekarang 18 kesalahan umum) sebelum lanjut.
 
@@ -13,6 +13,16 @@
 ⚠️ **Insiden non-kode saat deploy ini**: token Vercel statis di `~/.vercel-token` mendadak kena `Not authorized... must re-authenticate to this scope` untuk tim **marmotoko** (`saml: true` di respons API — kemungkinan tim baru mengaktifkan SSO/SAML, token API lama jadi tidak cukup). **Bukan bug kode.** Solusi: `vercel login` interaktif (device auth flow, user login manual lewat browser) — begitu berhasil, `vercel deploy` langsung normal lagi tanpa perlu `--token` eksplisit (pakai sesi CLI yang baru). Kalau kejadian lagi di sesi depan, ulangi pola ini: `vercel login` → tunggu user konfirmasi sudah login di browser → `vercel whoami`/`vercel teams ls` untuk verifikasi → lanjut `vercel deploy --prod --yes` tanpa `--token`.
 
 Catatan: schema `Catatan` ter-migrate ke Neon yang **dipakai bersama dev & produksi**, jadi perubahan schema lokal langsung berlaku di produksi.
+
+## Susulan Feature 31 — NIP Tegal Alur + perubahan roster (data-only, tidak perlu deploy kode)
+
+Setelah Menceng (23/24 NIP) selesai, user kirim screenshot mesin fingerprint Tegal Alur ("Marmo Ling.3"). Hasil (`prisma/import-nip-karyawan-tegal-alur.ts`):
+- **19 NIP terisi** untuk karyawan Tegal Alur yang sudah ada (beberapa nama sumber beda ejaan/kelengkapan dari database — TIDAK diubah namanya sesuai instruksi user eksplisit "nama tidak usah diubah", cuma NIP-nya yang diisi: Barudin→Barodin, Winda→Winda A, Eka→Eka Prasetya, Umroh→Ngumroh, Mansyur→Masyur, Widi Armanto→Widiarmanto, Fani→Fany Rahman, Sintia→Cintia)
+- **Salma dihapus** dari database (user: "salma dihapus aja" — tidak ada di daftar mesin, dicek dulu tidak ada kontrak/izin/profil terkait sebelum dihapus, aman)
+- **2 karyawan baru dibuat**: Nisa (NIP 10) & Yasmin (NIP 12), lokasi Tegal Alur, password default `123`, TANPA kontrak/tanggalMasuk (belum diketahui — perlu dilengkapi lewat Edit Karyawan kalau user tahu tanggal masuknya)
+- NIP 3030 "Novi" muncul di kedua lokasi (dikonfirmasi user, bukan anomali) — tidak ada perubahan, NIP-nya sudah benar di record Menceng yang sudah ada
+- Diuji: login Nisa & Yasmin (200), login Salma (401, sudah tidak ada), tab "Tegal Alur (21)" di Daftar Karyawan sesuai hitungan (20 − 1 + 2)
+- **Tidak ada perubahan kode app** — murni operasi data (fill NIP, delete, create) lewat script/DB langsung, jadi tidak perlu commit fitur baru atau deploy Vercel. Script diimpor tetap di-commit sebagai riwayat.
 
 ## Fitur terbaru (Feature 31 di PRD) — sesi 15 Agu 2026, sudah di-deploy
 
@@ -191,6 +201,7 @@ Setiap kali file ini diperbarui: naikkan **Versi** di judul +1, lalu tambah satu
 
 | Versi | Tanggal | Ringkasan perubahan |
 |---|---|---|
+| v17 | 2026-08-15 | Susulan Feature 31 (data-only, tanpa deploy kode): 19 NIP Tegal Alur terisi, Salma dihapus, Nisa & Yasmin dibuat baru. |
 | v16 | 2026-08-15 | Feature 31 **di-deploy ke produksi** (commit `a3d5c3b`, READY, diverifikasi langsung di www.marmo.my.id — NIP tampil benar). Insiden: token Vercel statis basi (tim aktifkan SSO), diperbaiki via `vercel login` interaktif — dicatat di "Alat & kredensial" untuk sesi depan. |
 | v15 | 2026-08-15 | **Feature 31** (field `User.nip` + kolom/form di Daftar & Edit Karyawan; impor 23/24 NIP dari data user, "Suryana" tidak ditemukan). Migrasi & data sudah di Neon (shared dev+prod), tapi kode UI/API belum di-deploy. |
 | v14 | 2026-08-11 | Feature 28 (kolom Diajukan) & 30 (+ revisi lengkapi surat dokter) **di-deploy ke produksi** (commit `8aec394`, READY, diverifikasi langsung di www.marmo.my.id — update-bukan-baris-baru & blokir duplikat dikonfirmasi kerja). |
