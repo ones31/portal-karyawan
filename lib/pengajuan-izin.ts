@@ -4,12 +4,14 @@ import { MAKS_UKURAN_SURAT, TIPE_SURAT, simpanSurat } from "./surat-dokter";
 import { kirimNotifKeAdmin } from "./push";
 import {
   FORMAT_JAM,
+  JAM_BATAS_IZIN_TELAT,
   JENIS_IZIN,
   JENIS_SATU_TANGGAL,
   LABEL_JENIS_IZIN,
   MAKS_HARI_MENIKAH,
   SUB_JENIS_SETENGAH_HARI,
   jumlahHari,
+  lewatBatasIzinTelat,
   type JenisIzin,
   type SubJenisSetengahHari,
 } from "./izin";
@@ -136,6 +138,16 @@ export async function buatIzin(input: BuatIzinInput): Promise<HasilBuatIzin> {
     if (subJenisValid === "TELAT") {
       if (!input.jamMasuk || !FORMAT_JAM.test(input.jamMasuk)) {
         return { ok: false, status: 400, pesan: "Jam masuk wajib diisi dengan format yang benar" };
+      }
+      // Cegah pengajuan "telat" setelah kesiangan sungguhan — deadline
+      // 08.00 WIB pada tanggal izin, ditegakkan di sini supaya berlaku di
+      // kedua jalur (karyawan sendiri & admin atas nama karyawan).
+      if (lewatBatasIzinTelat(tanggalMulai)) {
+        return {
+          ok: false,
+          status: 400,
+          pesan: `Izin Telat untuk tanggal ${formatTanggalIndo(new Date(tanggalMulai))} hanya bisa diajukan sebelum jam ${JAM_BATAS_IZIN_TELAT}.00 WIB`,
+        };
       }
       jamMasukValid = input.jamMasuk;
     } else if (subJenisValid === "PERTENGAHAN") {

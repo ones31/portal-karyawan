@@ -263,6 +263,10 @@ Validasi wajib **dua lapis**: client (pesan ramah sebelum submit) dan server di 
 **Data lama tidak disentuh:** 1 pengajuan SETENGAH_HARI yang sudah ada sebelum fitur ini (disetujui, tanpa sub-jenis) sengaja **dibiarkan `null`** — tetap tampil normal di semua tempat tanpa baris detail tambahan, tidak ada migrasi data/tebakan sub-jenis mana yang dimaksud.
 
 Aturan lain untuk Izin Setengah Hari **tidak berubah**: tetap 1 tanggal (`JENIS_SATU_TANGGAL`), tetap dikecualikan penuh dari persentase kehadiran (`JENIS_TIDAK_HITUNG_KEHADIRAN`), tetap kena aturan cegah-duplikasi per tanggal (Feature 30) — duplikasi dicek per `jenis`, belum per sub-jenis (jadi tidak bisa ajukan 2x Setengah Hari di tanggal sama walau sub-jenisnya beda).
+
+**Susulan — batas waktu pengajuan Telat (16 Agu 2026):** untuk mencegah karyawan beralasan sakit/lain-lain lalu belakangan mengaku "telat" padahal sebenarnya kesiangan, pengajuan sub-jenis **Telat** untuk suatu tanggal **hanya bisa dikirim sebelum jam 08.00 WIB pada tanggal izin itu** — lewat dari jam itu ditolak **400** (pesan menyebut tanggalnya). Sub-jenis lain (Izin di Tengah Jam Kerja, Pulang Cepat) **tidak kena** batas ini.
+
+Berlaku otomatis untuk tanggal manapun: tanggal yang sudah lewat (deadline-nya sudah pasti lewat) ikut ditolak, tanggal di masa depan selalu boleh (deadline-nya belum tiba). Toko beroperasi WIB (UTC+7 tetap, tanpa DST) — dihitung manual dari string tanggal + offset UTC eksplisit (`batasWaktuIzinTelat()`, `lewatBatasIzinTelat()` di `lib/izin.ts`) supaya **tidak bergantung timezone proses** yang menjalankannya (server Vercel default UTC, bukan WIB). Ditegakkan di `buatIzin()` (`lib/pengajuan-izin.ts`) — otomatis berlaku di kedua jalur (karyawan sendiri & admin atas nama karyawan) karena keduanya panggil fungsi yang sama; **belum ada pengecualian untuk admin** yang telat menginput padahal karyawannya lapor sebelum jam 8 (kalau ini jadi masalah nyata, perlu keputusan user terpisah). Validasi juga di client (pesan sebelum submit) + catatan statis di bawah field Jam Masuk di ketiga form pengajuan.
 **User yang memakai:** Karyawan, Admin, Owner
 
 #### Feature 31 — NIP (Nomor Induk Pegawai) Karyawan ✅
@@ -405,7 +409,7 @@ Otomatis ikut di semua tempat yang sudah generik lewat `JENIS_IZIN`/`LABEL_JENIS
 | alasan | |
 | surat_dokter | file upload (PDF/JPG/PNG maks 5 MB), **opsional** (tidak ada validasi wajib berdasar jumlah hari). Hanya bisa dibuka pemilik izin dan admin/owner |
 | subJenisSetengahHari | `TELAT` / `PERTENGAHAN` / `PULANG_CEPAT`, hanya diisi kalau `jenis` = `SETENGAH_HARI` (Feature 32) |
-| jamMasuk, jamKeluar, jamPulang | String "HH:mm", hanya diisi kalau `jenis` = `SETENGAH_HARI` (Feature 32). `jamMasuk` dipakai bersama TELAT (jam masuk aktual) & PERTENGAHAN (jam masuk kembali) |
+| jamMasuk, jamKeluar, jamPulang | String "HH:mm", hanya diisi kalau `jenis` = `SETENGAH_HARI` (Feature 32). `jamMasuk` dipakai bersama TELAT (jam masuk aktual) & PERTENGAHAN (jam masuk kembali). Sub-jenis TELAT punya batas waktu pengajuan: hanya sebelum jam 08.00 WIB pada tanggal izin (Feature 32 susulan) |
 | status | `MENUNGGU` / `DISETUJUI` / `DITOLAK` (di-approve admin/owner) |
 | feedbackAdmin | opsional, diisi admin/owner saat setujui/tolak (Feature 27) — tampil ke karyawan di riwayat & notifikasi |
 

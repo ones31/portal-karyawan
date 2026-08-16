@@ -1,6 +1,6 @@
 # Ringkasan Sesi — Portal Toko Marmo
 
-**Versi: v18** — diperbarui 2026-08-16
+**Versi: v19** — diperbarui 2026-08-16
 
 > Ditulis untuk melanjutkan pekerjaan di sesi Claude Code baru. Baca ini + `docs/PRD.md` (kebenaran tunggal fitur, sekarang sampai **Feature 32**) + `AGENTS.md` (manual operasi & aturan kerja, sekarang 18 kesalahan umum) sebelum lanjut.
 
@@ -31,7 +31,9 @@ Kelanjutan dari Feature 26 (Izin Setengah Hari). User minta dipecah jadi 3 sub-j
 
 **Catatan operasional:** ada 2 sesi Claude Code jalan bersamaan di folder ini — dev server sesi lain (PID 254) di-restart karena migrasi schema perlu Prisma Client baru (AGENTS.md kesalahan #3); sudah dinyalakan ulang dengan `npm run dev` seperti biasa.
 
-**Belum di-deploy ke Vercel** — perlu `vercel deploy --prod` kalau user minta.
+**Di-deploy ke produksi** commit `810bd84`, READY, diverifikasi langsung lewat API `www.marmo.my.id` (field baru muncul, data lama tetap `null` tanpa error). Insiden token Vercel basi lagi (SSO, sama seperti sesi lalu) — diperbaiki dengan pola yang sama: `vercel login` interaktif.
+
+**Susulan (masih sesi yang sama) — batas waktu pengajuan Telat:** user tambah aturan supaya karyawan tidak bisa beralasan sakit dulu baru belakangan mengaku "telat" padahal sebenarnya kesiangan. Sub-jenis **Telat** sekarang cuma bisa diajukan **sebelum jam 08.00 WIB pada tanggal izin itu** (tanggal lain — Izin di Tengah Jam Kerja, Pulang Cepat — tidak kena). Dihitung manual pakai offset UTC+7 eksplisit (`lewatBatasIzinTelat()` di `lib/izin.ts`), **sengaja tidak mengandalkan timezone proses server** karena Vercel default UTC (beda dari mesin dev lokal yang sudah WIB) — kalau pakai `new Date().getHours()` biasa, deadline bakal salah 7 jam di produksi. Ditegakkan di `buatIzin()` jadi otomatis berlaku di jalur karyawan maupun admin. Diuji lewat curl dengan tanggal relatif ke waktu asli saat itu (17:xx WIB, 16 Agu): ajukan Telat utk hari itu juga → 400 (lewat batas); ajukan Telat utk besok → 201 (belum lewat); ajukan Izin di Tengah Jam Kerja utk hari itu juga → tetap 201 (tidak kena aturan). **Belum di-deploy** — masih di komit lokal saat catatan ini ditulis, cek `git log` sebelum asumsi statusnya.
 
 ## Susulan Feature 31 — NIP Tegal Alur + perubahan roster (data-only, tidak perlu deploy kode)
 
@@ -221,7 +223,8 @@ Setiap kali file ini diperbarui: naikkan **Versi** di judul +1, lalu tambah satu
 
 | Versi | Tanggal | Ringkasan perubahan |
 |---|---|---|
-| v18 | 2026-08-16 | **Feature 32** (sub-jenis Izin Setengah Hari: Telat/Izin di Tengah Jam Kerja/Pulang Cepat, masing-masing dengan field jam wajib berbeda). Migrasi schema diterapkan ke Neon, data lama dibiarkan (`null`). Belum di-deploy ke Vercel. |
+| v19 | 2026-08-16 | Susulan Feature 32: batas waktu pengajuan Telat (hanya sebelum jam 08.00 WIB pada tanggal izin), dihitung manual dengan offset UTC+7 eksplisit supaya tidak salah di server Vercel (default UTC). Belum di-deploy. |
+| v18 | 2026-08-16 | **Feature 32** (sub-jenis Izin Setengah Hari: Telat/Izin di Tengah Jam Kerja/Pulang Cepat, masing-masing dengan field jam wajib berbeda) **di-deploy ke produksi** (commit `810bd84`, READY, diverifikasi langsung di www.marmo.my.id). Migrasi schema diterapkan ke Neon, data lama dibiarkan (`null`). |
 | v17 | 2026-08-15 | Susulan Feature 31 (data-only, tanpa deploy kode): 19 NIP Tegal Alur terisi, Salma dihapus, Nisa & Yasmin dibuat baru. |
 | v16 | 2026-08-15 | Feature 31 **di-deploy ke produksi** (commit `a3d5c3b`, READY, diverifikasi langsung di www.marmo.my.id — NIP tampil benar). Insiden: token Vercel statis basi (tim aktifkan SSO), diperbaiki via `vercel login` interaktif — dicatat di "Alat & kredensial" untuk sesi depan. |
 | v15 | 2026-08-15 | **Feature 31** (field `User.nip` + kolom/form di Daftar & Edit Karyawan; impor 23/24 NIP dari data user, "Suryana" tidak ditemukan). Migrasi & data sudah di Neon (shared dev+prod), tapi kode UI/API belum di-deploy. |

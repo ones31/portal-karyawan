@@ -54,6 +54,28 @@ export const LABEL_SUB_JENIS_SETENGAH_HARI: Record<SubJenisSetengahHari, string>
 // Format jam 24-jam "HH:mm", dipakai <input type="time"> & validasi server
 export const FORMAT_JAM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
+// Batas waktu pengajuan Izin Telat (Feature 32 — susulan): supaya karyawan
+// tidak bisa beralasan "telat" setelah kesiangan sungguhan (baru mengajukan
+// jauh setelah jam masuk normal), pengajuan Telat untuk suatu tanggal cuma
+// bisa dikirim sebelum jam 08.00 WIB pada tanggal itu. Toko beroperasi WIB
+// (UTC+7 tetap, tanpa DST) — dihitung manual dari string tanggal + offset UTC
+// eksplisit supaya TIDAK bergantung timezone proses yang menjalankannya
+// (server Vercel default UTC, browser karyawan bisa apa saja).
+const OFFSET_WIB_JAM = 7;
+export const JAM_BATAS_IZIN_TELAT = 8; // 08.00 WIB
+
+export function batasWaktuIzinTelat(tanggalIzin: string): Date {
+  const jamUtc = JAM_BATAS_IZIN_TELAT - OFFSET_WIB_JAM;
+  return new Date(`${tanggalIzin}T${String(jamUtc).padStart(2, "0")}:00:00.000Z`);
+}
+
+export function lewatBatasIzinTelat(
+  tanggalIzin: string,
+  sekarang: Date = new Date()
+): boolean {
+  return sekarang > batasWaktuIzinTelat(tanggalIzin);
+}
+
 // Ringkasan detail sub-jenis Izin Setengah Hari untuk riwayat/laporan/export.
 // jamMasuk dipakai bersama oleh TELAT (jam masuk aktual) & PERTENGAHAN (jam masuk kembali).
 export function detailSubJenisSetengahHari(

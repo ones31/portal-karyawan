@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  JAM_BATAS_IZIN_TELAT,
   JENIS_SATU_TANGGAL,
   LABEL_JENIS_IZIN,
   LABEL_SUB_JENIS_SETENGAH_HARI,
@@ -9,6 +10,7 @@ import {
   SUB_JENIS_SETENGAH_HARI,
   detailSubJenisSetengahHari,
   jumlahHari,
+  lewatBatasIzinTelat,
   type JenisIzin,
   type SubJenisSetengahHari,
 } from "@/lib/izin";
@@ -155,6 +157,16 @@ export default function IzinPage() {
     if (jenis === "SETENGAH_HARI") {
       if (subJenisSetengahHari === "TELAT" && !jamMasuk) {
         setError("Jam masuk wajib diisi.");
+        return;
+      }
+      if (
+        subJenisSetengahHari === "TELAT" &&
+        tanggalMulai &&
+        lewatBatasIzinTelat(tanggalMulai)
+      ) {
+        setError(
+          `Izin Telat untuk tanggal ini hanya bisa diajukan sebelum jam ${JAM_BATAS_IZIN_TELAT}.00 WIB.`
+        );
         return;
       }
       if (subJenisSetengahHari === "PERTENGAHAN" && (!jamKeluar || !jamMasuk)) {
@@ -393,6 +405,10 @@ export default function IzinPage() {
                         onChange={(e) => setJamMasuk(e.target.value)}
                         className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
                       />
+                      <p className="mt-1 text-xs text-slate-500">
+                        Hanya bisa diajukan sebelum jam {JAM_BATAS_IZIN_TELAT}.00 WIB pada
+                        tanggal izin.
+                      </p>
                     </div>
                   )}
                   {subJenisSetengahHari === "PERTENGAHAN" && (
