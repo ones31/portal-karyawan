@@ -362,7 +362,7 @@ export default function DaftarKaryawanPage() {
                   Izin Sakit ({PERIODE_LABEL[periode]})
                 </th>
                 <th className="py-2">
-                  Izin Lain-lain ({PERIODE_LABEL[periode]})
+                  Izin Selain Sakit ({PERIODE_LABEL[periode]})
                 </th>
               </tr>
             </thead>

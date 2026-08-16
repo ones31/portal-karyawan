@@ -107,7 +107,7 @@ export default function AdminDashboard() {
       href: `/admin/rekap-izin?jenis=SAKIT&periode=${periode}`,
     },
     {
-      label: `Izin Lain-lain (${labelPeriode})`,
+      label: `Izin Selain Sakit (${labelPeriode})`,
       nilai: stat.izinLainnya,
       warna: "text-purple-600",
       href: `/admin/rekap-izin?jenis=LAINNYA&periode=${periode}`,

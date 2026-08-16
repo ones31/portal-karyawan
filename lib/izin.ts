@@ -11,8 +11,8 @@ export type JenisIzin = (typeof JENIS_IZIN)[number];
 
 export const LABEL_JENIS_IZIN: Record<JenisIzin, string> = {
   SAKIT: "Izin Sakit",
-  LAINNYA: "Izin Lain-lain",
-  SETENGAH_HARI: "Izin Setengah Hari",
+  LAINNYA: "Izin Selain Sakit",
+  SETENGAH_HARI: "Izin Tidak Full (Telat, Pulang Cepat, Pertengahan)",
   MENIKAH: "Izin Menikah",
   TUGAS_NEGARA: "Tugas Negara",
 };

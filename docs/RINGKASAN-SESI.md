@@ -1,6 +1,6 @@
 # Ringkasan Sesi — Portal Toko Marmo
 
-**Versi: v19** — diperbarui 2026-08-16
+**Versi: v20** — diperbarui 2026-08-16
 
 > Ditulis untuk melanjutkan pekerjaan di sesi Claude Code baru. Baca ini + `docs/PRD.md` (kebenaran tunggal fitur, sekarang sampai **Feature 32**) + `AGENTS.md` (manual operasi & aturan kerja, sekarang 18 kesalahan umum) sebelum lanjut.
 
@@ -14,7 +14,7 @@
 
 Catatan: schema `Catatan` ter-migrate ke Neon yang **dipakai bersama dev & produksi**, jadi perubahan schema lokal langsung berlaku di produksi.
 
-## Feature 32 — Sub-jenis Izin Setengah Hari (Telat / Izin di Tengah Jam Kerja / Pulang Cepat) — sesi 16 Agu 2026
+## Feature 32 — Sub-jenis "Izin Tidak Full" (Telat / Izin di Tengah Jam Kerja / Pulang Cepat) — sesi 16 Agu 2026
 
 Kelanjutan dari Feature 26 (Izin Setengah Hari). User minta dipecah jadi 3 sub-jenis, masing-masing mewajibkan jam berbeda:
 - **Telat** → Jam Masuk
@@ -33,7 +33,13 @@ Kelanjutan dari Feature 26 (Izin Setengah Hari). User minta dipecah jadi 3 sub-j
 
 **Di-deploy ke produksi** commit `810bd84`, READY, diverifikasi langsung lewat API `www.marmo.my.id` (field baru muncul, data lama tetap `null` tanpa error). Insiden token Vercel basi lagi (SSO, sama seperti sesi lalu) — diperbaiki dengan pola yang sama: `vercel login` interaktif.
 
-**Susulan (masih sesi yang sama) — batas waktu pengajuan Telat:** user tambah aturan supaya karyawan tidak bisa beralasan sakit dulu baru belakangan mengaku "telat" padahal sebenarnya kesiangan. Sub-jenis **Telat** sekarang cuma bisa diajukan **sebelum jam 08.00 WIB pada tanggal izin itu** (tanggal lain — Izin di Tengah Jam Kerja, Pulang Cepat — tidak kena). Dihitung manual pakai offset UTC+7 eksplisit (`lewatBatasIzinTelat()` di `lib/izin.ts`), **sengaja tidak mengandalkan timezone proses server** karena Vercel default UTC (beda dari mesin dev lokal yang sudah WIB) — kalau pakai `new Date().getHours()` biasa, deadline bakal salah 7 jam di produksi. Ditegakkan di `buatIzin()` jadi otomatis berlaku di jalur karyawan maupun admin. Diuji lewat curl dengan tanggal relatif ke waktu asli saat itu (17:xx WIB, 16 Agu): ajukan Telat utk hari itu juga → 400 (lewat batas); ajukan Telat utk besok → 201 (belum lewat); ajukan Izin di Tengah Jam Kerja utk hari itu juga → tetap 201 (tidak kena aturan). **Belum di-deploy** — masih di komit lokal saat catatan ini ditulis, cek `git log` sebelum asumsi statusnya.
+**Susulan (masih sesi yang sama) — batas waktu pengajuan Telat:** user tambah aturan supaya karyawan tidak bisa beralasan sakit dulu baru belakangan mengaku "telat" padahal sebenarnya kesiangan. Sub-jenis **Telat** sekarang cuma bisa diajukan **sebelum jam 08.00 WIB pada tanggal izin itu** (tanggal lain — Izin di Tengah Jam Kerja, Pulang Cepat — tidak kena). Dihitung manual pakai offset UTC+7 eksplisit (`lewatBatasIzinTelat()` di `lib/izin.ts`), **sengaja tidak mengandalkan timezone proses server** karena Vercel default UTC (beda dari mesin dev lokal yang sudah WIB) — kalau pakai `new Date().getHours()` biasa, deadline bakal salah 7 jam di produksi. Diuji lewat curl dengan tanggal relatif ke waktu asli saat itu (17:xx WIB, 16 Agu): ajukan Telat utk hari itu juga → 400 (lewat batas); ajukan Telat utk besok → 201 (belum lewat); ajukan Izin di Tengah Jam Kerja utk hari itu juga → tetap 201 (tidak kena aturan). ~~Ditegakkan di `buatIzin()` jadi otomatis berlaku di jalur karyawan maupun admin~~ — **direvisi lagi di susulan berikutnya, lihat di bawah.**
+
+**Susulan lagi (masih sesi yang sama) — pengecualian admin & rename 2 label jenis izin:** dua permintaan sekaligus:
+1. **Pengecualian admin dari batas jam 08.00:** kalau admin/owner yang input izin Telat atas nama karyawan (bukan karyawan sendiri), batas waktu **tidak berlaku** — parameter baru `diajukanOlehAdmin: true` dikirim dari `app/api/admin/karyawan/[id]/izin/route.ts` ke `buatIzin()`, jalur karyawan (`app/api/izin/route.ts`) tidak mengirim ini jadi tetap kena batas. Client-side check & hint teks "Hanya bisa diajukan sebelum jam 8.00 WIB..." dihapus dari kedua form admin (`/admin/ajukan-izin`, "+ Ajukan Izin" di halaman Edit Karyawan), tetap ada di form karyawan.
+2. **Rename label** (nama enum di database TIDAK berubah, cuma teks tampilan di `LABEL_JENIS_IZIN`): "Izin Lain-lain" → **"Izin Selain Sakit"**, "Izin Setengah Hari" → **"Izin Tidak Full (Telat, Pulang Cepat, Pertengahan)"**. **Temuan saat rename**: 2 dari 3 form pengajuan (karyawan, admin "+ Ajukan Izin untuk Karyawan Ini") ternyata punya dropdown `<option>` yang di-hardcode manual, BUKAN diambil dari `LABEL_JENIS_IZIN` — beda dari form admin "Ajukan Izin" yang sudah generik lewat `Object.entries(LABEL_JENIS_IZIN)`. Kalau cuma ganti `lib/izin.ts`, 2 form itu bakal tetap tampilkan label lama. Sekalian diperbaiki jadi generik semua (`Object.entries(...)`) supaya tidak kejadian lagi kalau ada rename/tambah jenis izin berikutnya — dicatat sebagai perbaikan dalam-scope, bukan diminta eksplisit, sesuai pola kerja yang disukai user. Heading kecil "Jenis Izin Setengah Hari" (di atas pilihan sub-jenis) ikut diganti "Detail Izin Tidak Full" di ketiga form.
+
+Diuji: karyawan uji (`Uji AdminException`) coba Telat hari itu juga → 400 (masih kena batas); admin (seno) input Telat utk karyawan yang sama, tanggal & jam sama → 201 (dikecualikan). Label baru dicek tampil benar di dropdown ketiga form, tabel `/admin/izin`, dan kartu/tabel dashboard "Izin Selain Sakit". `npx tsc --noEmit` & eslint bersih (cuma error pre-existing tak terkait di beberapa file, pola `muat()` dalam `useEffect`). Data uji dibersihkan.
 
 ## Susulan Feature 31 — NIP Tegal Alur + perubahan roster (data-only, tidak perlu deploy kode)
 
@@ -223,7 +229,8 @@ Setiap kali file ini diperbarui: naikkan **Versi** di judul +1, lalu tambah satu
 
 | Versi | Tanggal | Ringkasan perubahan |
 |---|---|---|
-| v19 | 2026-08-16 | Susulan Feature 32: batas waktu pengajuan Telat (hanya sebelum jam 08.00 WIB pada tanggal izin), dihitung manual dengan offset UTC+7 eksplisit supaya tidak salah di server Vercel (default UTC). Belum di-deploy. |
+| v20 | 2026-08-16 | Susulan Feature 32: batas jam 08.00 WIB untuk Telat dikecualikan kalau admin yang input; rename label "Izin Lain-lain"→"Izin Selain Sakit" & "Izin Setengah Hari"→"Izin Tidak Full (...)" (2 dropdown hardcoded ikut diperbaiki jadi generik). Belum di-deploy. |
+| v19 | 2026-08-16 | Susulan Feature 32: batas waktu pengajuan Telat (hanya sebelum jam 08.00 WIB pada tanggal izin), dihitung manual dengan offset UTC+7 eksplisit supaya tidak salah di server Vercel (default UTC). Sudah di-deploy bersama v18. |
 | v18 | 2026-08-16 | **Feature 32** (sub-jenis Izin Setengah Hari: Telat/Izin di Tengah Jam Kerja/Pulang Cepat, masing-masing dengan field jam wajib berbeda) **di-deploy ke produksi** (commit `810bd84`, READY, diverifikasi langsung di www.marmo.my.id). Migrasi schema diterapkan ke Neon, data lama dibiarkan (`null`). |
 | v17 | 2026-08-15 | Susulan Feature 31 (data-only, tanpa deploy kode): 19 NIP Tegal Alur terisi, Salma dihapus, Nisa & Yasmin dibuat baru. |
 | v16 | 2026-08-15 | Feature 31 **di-deploy ke produksi** (commit `a3d5c3b`, READY, diverifikasi langsung di www.marmo.my.id — NIP tampil benar). Insiden: token Vercel statis basi (tim aktifkan SSO), diperbaiki via `vercel login` interaktif — dicatat di "Alat & kredensial" untuk sesi depan. |

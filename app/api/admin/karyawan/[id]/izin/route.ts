@@ -80,6 +80,7 @@ export async function POST(
     jamMasuk,
     jamKeluar,
     jamPulang,
+    diajukanOlehAdmin: true,
   });
   if (!hasil.ok) {
     return NextResponse.json({ error: hasil.pesan }, { status: hasil.status });

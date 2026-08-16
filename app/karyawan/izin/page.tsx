@@ -246,11 +246,11 @@ export default function IzinPage() {
               onChange={(e) => setJenis(e.target.value as JenisIzin | "TUKAR")}
               className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
             >
-              <option value="SAKIT">Izin Sakit</option>
-              <option value="LAINNYA">Izin Lain-lain</option>
-              <option value="SETENGAH_HARI">Izin Setengah Hari</option>
-              <option value="MENIKAH">Izin Menikah</option>
-              <option value="TUGAS_NEGARA">Tugas Negara</option>
+              {Object.entries(LABEL_JENIS_IZIN).map(([nilai, label]) => (
+                <option key={nilai} value={nilai}>
+                  {label}
+                </option>
+              ))}
               <option value="TUKAR">Tukar Libur</option>
             </select>
           </div>
@@ -377,7 +377,7 @@ export default function IzinPage() {
               {jenis === "SETENGAH_HARI" && (
                 <div>
                   <label className="block text-sm font-medium">
-                    Jenis Izin Setengah Hari
+                    Detail Izin Tidak Full
                   </label>
                   <div className="mt-1 space-y-2">
                     {SUB_JENIS_SETENGAH_HARI.map((v) => (

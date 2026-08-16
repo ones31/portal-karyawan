@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  JAM_BATAS_IZIN_TELAT,
   JENIS_SATU_TANGGAL,
   LABEL_JENIS_IZIN,
   LABEL_SUB_JENIS_SETENGAH_HARI,
@@ -12,7 +11,6 @@ import {
   SUB_JENIS_SETENGAH_HARI,
   detailSubJenisSetengahHari,
   jumlahHari,
-  lewatBatasIzinTelat,
   type JenisIzin,
   type SubJenisSetengahHari,
 } from "@/lib/izin";
@@ -242,16 +240,6 @@ export default function EditKaryawanPage() {
     if (jenisIzinBaru === "SETENGAH_HARI") {
       if (subJenisSetengahHariBaru === "TELAT" && !jamMasukBaru) {
         setErrorIzin("Jam masuk wajib diisi.");
-        return;
-      }
-      if (
-        subJenisSetengahHariBaru === "TELAT" &&
-        tanggalMulaiBaru &&
-        lewatBatasIzinTelat(tanggalMulaiBaru)
-      ) {
-        setErrorIzin(
-          `Izin Telat untuk tanggal ini hanya bisa diajukan sebelum jam ${JAM_BATAS_IZIN_TELAT}.00 WIB.`
-        );
         return;
       }
       if (
@@ -639,11 +627,11 @@ export default function EditKaryawanPage() {
                 onChange={(e) => setJenisIzinBaru(e.target.value as JenisIzin)}
                 className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-blue-500 focus:outline-none"
               >
-                <option value="SAKIT">Izin Sakit</option>
-                <option value="LAINNYA">Izin Lain-lain</option>
-                <option value="SETENGAH_HARI">Izin Setengah Hari</option>
-                <option value="MENIKAH">Izin Menikah</option>
-                <option value="TUGAS_NEGARA">Tugas Negara</option>
+                {Object.entries(LABEL_JENIS_IZIN).map(([nilai, label]) => (
+                  <option key={nilai} value={nilai}>
+                    {label}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -694,7 +682,7 @@ export default function EditKaryawanPage() {
             {jenisIzinBaru === "SETENGAH_HARI" && (
               <div>
                 <label className="block text-sm font-medium">
-                  Jenis Izin Setengah Hari
+                  Detail Izin Tidak Full
                 </label>
                 <div className="mt-1 space-y-2">
                   {SUB_JENIS_SETENGAH_HARI.map((v) => (
@@ -722,10 +710,6 @@ export default function EditKaryawanPage() {
                       onChange={(e) => setJamMasukBaru(e.target.value)}
                       className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-blue-500 focus:outline-none"
                     />
-                    <p className="mt-1 text-xs text-slate-500">
-                      Hanya bisa diajukan sebelum jam {JAM_BATAS_IZIN_TELAT}.00 WIB pada
-                      tanggal izin.
-                    </p>
                   </div>
                 )}
                 {subJenisSetengahHariBaru === "PERTENGAHAN" && (

@@ -63,6 +63,10 @@ export type BuatIzinInput = {
   jamMasuk?: string | null;
   jamKeluar?: string | null;
   jamPulang?: string | null;
+  // true kalau admin/owner yang input atas nama karyawan (Feature 20) — mengecualikan
+  // dari batas waktu pengajuan Telat (Feature 32 susulan), karena keterlambatan
+  // input admin bukan salah karyawan yang sudah lapor sebelum jam 8.
+  diajukanOlehAdmin?: boolean;
 };
 
 export type HasilBuatIzin =
@@ -131,7 +135,7 @@ export async function buatIzin(input: BuatIzinInput): Promise<HasilBuatIzin> {
         ok: false,
         status: 400,
         pesan:
-          "Pilih jenis Izin Setengah Hari: Telat, Izin di Tengah Jam Kerja, atau Pulang Cepat",
+          "Pilih jenis Izin Tidak Full: Telat, Izin di Tengah Jam Kerja, atau Pulang Cepat",
       };
     }
     subJenisValid = sub as SubJenisSetengahHari;
@@ -140,9 +144,10 @@ export async function buatIzin(input: BuatIzinInput): Promise<HasilBuatIzin> {
         return { ok: false, status: 400, pesan: "Jam masuk wajib diisi dengan format yang benar" };
       }
       // Cegah pengajuan "telat" setelah kesiangan sungguhan — deadline
-      // 08.00 WIB pada tanggal izin, ditegakkan di sini supaya berlaku di
-      // kedua jalur (karyawan sendiri & admin atas nama karyawan).
-      if (lewatBatasIzinTelat(tanggalMulai)) {
+      // 08.00 WIB pada tanggal izin. Tidak berlaku kalau admin/owner yang
+      // input atas nama karyawan (Feature 20) — keterlambatan admin
+      // menginput bukan salah karyawan yang sudah lapor sebelum jam 8.
+      if (!input.diajukanOlehAdmin && lewatBatasIzinTelat(tanggalMulai)) {
         return {
           ok: false,
           status: 400,
