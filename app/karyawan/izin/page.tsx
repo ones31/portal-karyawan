@@ -4,9 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import {
   JENIS_SATU_TANGGAL,
   LABEL_JENIS_IZIN,
+  LABEL_SUB_JENIS_SETENGAH_HARI,
   MAKS_HARI_MENIKAH,
+  SUB_JENIS_SETENGAH_HARI,
+  detailSubJenisSetengahHari,
   jumlahHari,
   type JenisIzin,
+  type SubJenisSetengahHari,
 } from "@/lib/izin";
 
 type Izin = {
@@ -16,6 +20,10 @@ type Izin = {
   tanggalAkhir: string;
   alasan: string;
   suratDokter: string | null;
+  subJenisSetengahHari: SubJenisSetengahHari | null;
+  jamMasuk: string | null;
+  jamKeluar: string | null;
+  jamPulang: string | null;
   status: "MENUNGGU" | "DISETUJUI" | "DITOLAK";
   feedbackAdmin: string | null;
   createdAt: string;
@@ -64,6 +72,13 @@ export default function IzinPage() {
   const [tanggalMulai, setTanggalMulai] = useState("");
   const [tanggalAkhir, setTanggalAkhir] = useState("");
   const [alasan, setAlasan] = useState("");
+
+  // Field izin setengah hari (Feature 32)
+  const [subJenisSetengahHari, setSubJenisSetengahHari] =
+    useState<SubJenisSetengahHari>("TELAT");
+  const [jamMasuk, setJamMasuk] = useState("");
+  const [jamKeluar, setJamKeluar] = useState("");
+  const [jamPulang, setJamPulang] = useState("");
 
   // Field tukar libur
   const [tanggalLibur, setTanggalLibur] = useState("");
@@ -137,6 +152,20 @@ export default function IzinPage() {
       setError("Silakan pilih file surat dokter terlebih dahulu.");
       return;
     }
+    if (jenis === "SETENGAH_HARI") {
+      if (subJenisSetengahHari === "TELAT" && !jamMasuk) {
+        setError("Jam masuk wajib diisi.");
+        return;
+      }
+      if (subJenisSetengahHari === "PERTENGAHAN" && (!jamKeluar || !jamMasuk)) {
+        setError("Jam keluar dan jam masuk kembali wajib diisi.");
+        return;
+      }
+      if (subJenisSetengahHari === "PULANG_CEPAT" && !jamPulang) {
+        setError("Jam pulang wajib diisi.");
+        return;
+      }
+    }
     // Jenis "satu tanggal" (Tugas Negara, Setengah Hari): tanggal akhir = tanggal mulai
     const akhir = JENIS_SATU_TANGGAL.includes(jenis as JenisIzin)
       ? tanggalMulai
@@ -157,6 +186,15 @@ export default function IzinPage() {
     if (jenis === "SAKIT" && tipeSakit === "DENGAN" && file) {
       fd.append("suratDokter", file);
     }
+    if (jenis === "SETENGAH_HARI") {
+      fd.append("subJenisSetengahHari", subJenisSetengahHari);
+      if (subJenisSetengahHari === "TELAT") fd.append("jamMasuk", jamMasuk);
+      if (subJenisSetengahHari === "PERTENGAHAN") {
+        fd.append("jamKeluar", jamKeluar);
+        fd.append("jamMasuk", jamMasuk);
+      }
+      if (subJenisSetengahHari === "PULANG_CEPAT") fd.append("jamPulang", jamPulang);
+    }
     const res = await fetch("/api/izin", { method: "POST", body: fd });
     setMengirim(false);
     if (!res.ok) {
@@ -169,6 +207,10 @@ export default function IzinPage() {
     setAlasan("");
     setFile(null);
     setTipeSakit("TANPA");
+    setSubJenisSetengahHari("TELAT");
+    setJamMasuk("");
+    setJamKeluar("");
+    setJamPulang("");
     if (inputFileRef.current) inputFileRef.current.value = "";
     muat();
   }
@@ -320,6 +362,80 @@ export default function IzinPage() {
                 </p>
               )}
 
+              {jenis === "SETENGAH_HARI" && (
+                <div>
+                  <label className="block text-sm font-medium">
+                    Jenis Izin Setengah Hari
+                  </label>
+                  <div className="mt-1 space-y-2">
+                    {SUB_JENIS_SETENGAH_HARI.map((v) => (
+                      <label
+                        key={v}
+                        className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm has-checked:border-blue-500 has-checked:bg-blue-50"
+                      >
+                        <input
+                          type="radio"
+                          name="subJenisSetengahHari"
+                          checked={subJenisSetengahHari === v}
+                          onChange={() => setSubJenisSetengahHari(v)}
+                        />
+                        {LABEL_SUB_JENIS_SETENGAH_HARI[v]}
+                      </label>
+                    ))}
+                  </div>
+                  {subJenisSetengahHari === "TELAT" && (
+                    <div className="mt-2">
+                      <label className="block text-sm font-medium">Jam Masuk</label>
+                      <input
+                        type="time"
+                        required
+                        value={jamMasuk}
+                        onChange={(e) => setJamMasuk(e.target.value)}
+                        className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
+                      />
+                    </div>
+                  )}
+                  {subJenisSetengahHari === "PERTENGAHAN" && (
+                    <div className="mt-2 grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium">Jam Keluar</label>
+                        <input
+                          type="time"
+                          required
+                          value={jamKeluar}
+                          onChange={(e) => setJamKeluar(e.target.value)}
+                          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium">
+                          Jam Masuk Kembali
+                        </label>
+                        <input
+                          type="time"
+                          required
+                          value={jamMasuk}
+                          onChange={(e) => setJamMasuk(e.target.value)}
+                          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {subJenisSetengahHari === "PULANG_CEPAT" && (
+                    <div className="mt-2">
+                      <label className="block text-sm font-medium">Jam Pulang</label>
+                      <input
+                        type="time"
+                        required
+                        value={jamPulang}
+                        onChange={(e) => setJamPulang(e.target.value)}
+                        className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
               {JENIS_SATU_TANGGAL.includes(jenis as JenisIzin) ? (
                 <div>
                   <label className="block text-sm font-medium">Tanggal</label>
@@ -431,6 +547,16 @@ export default function IzinPage() {
                     </p>
                     {r.alasan && (
                       <p className="mt-0.5 text-sm text-slate-500">{r.alasan}</p>
+                    )}
+                    {r.jenis === "SETENGAH_HARI" && (
+                      <p className="mt-0.5 text-sm text-slate-500">
+                        {detailSubJenisSetengahHari(
+                          r.subJenisSetengahHari,
+                          r.jamMasuk,
+                          r.jamKeluar,
+                          r.jamPulang
+                        )}
+                      </p>
                     )}
                     {r.jenis === "SAKIT" &&
                       (r.suratDokter ? (

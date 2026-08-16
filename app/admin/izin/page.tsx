@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LABEL_JENIS_IZIN, type JenisIzin } from "@/lib/izin";
+import {
+  LABEL_JENIS_IZIN,
+  detailSubJenisSetengahHari,
+  type JenisIzin,
+  type SubJenisSetengahHari,
+} from "@/lib/izin";
 import ModalTolakPengajuan from "@/components/ModalTolakPengajuan";
 
 type Izin = {
@@ -11,6 +16,10 @@ type Izin = {
   tanggalAkhir: string;
   alasan: string;
   suratDokter: string | null;
+  subJenisSetengahHari: SubJenisSetengahHari | null;
+  jamMasuk: string | null;
+  jamKeluar: string | null;
+  jamPulang: string | null;
   status: "MENUNGGU" | "DISETUJUI" | "DITOLAK";
   feedbackAdmin: string | null;
   createdAt: string;
@@ -132,6 +141,16 @@ export default function AdminIzinPage() {
                     <span className="block truncate" title={i.alasan}>
                       {i.alasan || <span className="text-slate-400">—</span>}
                     </span>
+                    {i.jenis === "SETENGAH_HARI" && (
+                      <p className="text-xs text-slate-500">
+                        {detailSubJenisSetengahHari(
+                          i.subJenisSetengahHari,
+                          i.jamMasuk,
+                          i.jamKeluar,
+                          i.jamPulang
+                        )}
+                      </p>
+                    )}
                     {i.jenis === "SAKIT" && i.suratDokter && (
                       <a
                         href={`/api/izin/surat/${i.suratDokter}`}

@@ -38,6 +38,10 @@ export async function POST(
   // Terima multipart/form-data (upload surat dokter) maupun JSON (tanpa file)
   let jenis: string, tanggalMulai: string, tanggalAkhir: string, alasan: string;
   let fileSurat: File | null = null;
+  let subJenisSetengahHari: string | null = null;
+  let jamMasuk: string | null = null;
+  let jamKeluar: string | null = null;
+  let jamPulang: string | null = null;
 
   if ((req.headers.get("content-type") ?? "").includes("multipart/form-data")) {
     const fd = await req.formData();
@@ -47,8 +51,21 @@ export async function POST(
     alasan = String(fd.get("alasan") ?? "");
     const f = fd.get("suratDokter");
     if (f instanceof File && f.size > 0) fileSurat = f;
+    subJenisSetengahHari = (fd.get("subJenisSetengahHari") as string) || null;
+    jamMasuk = (fd.get("jamMasuk") as string) || null;
+    jamKeluar = (fd.get("jamKeluar") as string) || null;
+    jamPulang = (fd.get("jamPulang") as string) || null;
   } else {
-    ({ jenis, tanggalMulai, tanggalAkhir, alasan } = await req.json());
+    ({
+      jenis,
+      tanggalMulai,
+      tanggalAkhir,
+      alasan,
+      subJenisSetengahHari = null,
+      jamMasuk = null,
+      jamKeluar = null,
+      jamPulang = null,
+    } = await req.json());
   }
 
   const hasil = await buatIzin({
@@ -59,6 +76,10 @@ export async function POST(
     tanggalAkhir,
     alasan,
     fileSurat,
+    subJenisSetengahHari,
+    jamMasuk,
+    jamKeluar,
+    jamPulang,
   });
   if (!hasil.ok) {
     return NextResponse.json({ error: hasil.pesan }, { status: hasil.status });

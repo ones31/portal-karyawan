@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sesiSaatIni, adalahAdmin, filterLokasiSesi } from "@/lib/auth";
 import { rentangPeriode } from "@/lib/periode";
-import { JENIS_IZIN, type JenisIzin } from "@/lib/izin";
+import { JENIS_IZIN, type JenisIzin, type SubJenisSetengahHari } from "@/lib/izin";
 
 // Rekap izin per karyawan: siapa saja yang izin + jumlahnya, sesuai jenis & periode.
 // jenis "SEMUA" (atau nilai tak dikenal) = semua jenis izin digabung.
@@ -47,6 +47,10 @@ export async function GET(req: Request) {
         alasan: string;
         status: string;
         suratDokter: string | null;
+        subJenisSetengahHari: SubJenisSetengahHari | null;
+        jamMasuk: string | null;
+        jamKeluar: string | null;
+        jamPulang: string | null;
         createdAt: Date;
       }[];
     }
@@ -72,6 +76,10 @@ export async function GET(req: Request) {
       alasan: i.alasan,
       status: i.status,
       suratDokter: i.suratDokter,
+      subJenisSetengahHari: i.subJenisSetengahHari,
+      jamMasuk: i.jamMasuk,
+      jamKeluar: i.jamKeluar,
+      jamPulang: i.jamPulang,
       createdAt: i.createdAt,
     });
   }

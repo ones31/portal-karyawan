@@ -35,6 +35,40 @@ export const JENIS_TIDAK_HITUNG_KEHADIRAN: readonly JenisIzin[] = [
 // Batas hari untuk izin menikah (sesuai perjanjian kerja)
 export const MAKS_HARI_MENIKAH = 7;
 
+// Sub-jenis Izin Setengah Hari (Feature 32) — dipilih setelah jenis = SETENGAH_HARI,
+// pola sama seperti pilihan tipe surat dokter di Izin Sakit.
+export const SUB_JENIS_SETENGAH_HARI = [
+  "TELAT",
+  "PERTENGAHAN",
+  "PULANG_CEPAT",
+] as const;
+
+export type SubJenisSetengahHari = (typeof SUB_JENIS_SETENGAH_HARI)[number];
+
+export const LABEL_SUB_JENIS_SETENGAH_HARI: Record<SubJenisSetengahHari, string> = {
+  TELAT: "Telat",
+  PERTENGAHAN: "Izin di Tengah Jam Kerja",
+  PULANG_CEPAT: "Pulang Cepat",
+};
+
+// Format jam 24-jam "HH:mm", dipakai <input type="time"> & validasi server
+export const FORMAT_JAM = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+// Ringkasan detail sub-jenis Izin Setengah Hari untuk riwayat/laporan/export.
+// jamMasuk dipakai bersama oleh TELAT (jam masuk aktual) & PERTENGAHAN (jam masuk kembali).
+export function detailSubJenisSetengahHari(
+  sub: SubJenisSetengahHari | null | undefined,
+  jamMasuk: string | null | undefined,
+  jamKeluar: string | null | undefined,
+  jamPulang: string | null | undefined
+): string | null {
+  if (sub === "TELAT") return `Telat — jam masuk ${jamMasuk ?? "-"}`;
+  if (sub === "PERTENGAHAN")
+    return `Izin di Tengah Jam Kerja — keluar ${jamKeluar ?? "-"}, masuk kembali ${jamMasuk ?? "-"}`;
+  if (sub === "PULANG_CEPAT") return `Pulang Cepat — jam pulang ${jamPulang ?? "-"}`;
+  return null;
+}
+
 // Jumlah hari inklusif antara dua tanggal (yyyy-mm-dd)
 export function jumlahHari(mulai: string, akhir: string): number {
   const a = new Date(mulai);

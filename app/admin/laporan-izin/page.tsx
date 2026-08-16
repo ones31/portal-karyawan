@@ -1,7 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { JENIS_IZIN, LABEL_JENIS_IZIN, type JenisIzin } from "@/lib/izin";
+import {
+  JENIS_IZIN,
+  LABEL_JENIS_IZIN,
+  detailSubJenisSetengahHari,
+  type JenisIzin,
+  type SubJenisSetengahHari,
+} from "@/lib/izin";
 import { periodeSiklus, isoTanggalLokal } from "@/lib/periode";
 
 type IzinRekap = {
@@ -11,6 +17,10 @@ type IzinRekap = {
   alasan: string;
   status: "MENUNGGU" | "DISETUJUI" | "DITOLAK";
   suratDokter: string | null;
+  subJenisSetengahHari: SubJenisSetengahHari | null;
+  jamMasuk: string | null;
+  jamKeluar: string | null;
+  jamPulang: string | null;
   createdAt: string;
 };
 
@@ -320,6 +330,16 @@ export default function LaporanIzinPage() {
                           <span className="block max-w-64 truncate" title={i.alasan}>
                             {i.alasan || "—"}
                           </span>
+                          {i.jenis === "SETENGAH_HARI" && (
+                            <span className="block text-xs text-slate-400">
+                              {detailSubJenisSetengahHari(
+                                i.subJenisSetengahHari,
+                                i.jamMasuk,
+                                i.jamKeluar,
+                                i.jamPulang
+                              )}
+                            </span>
+                          )}
                         </td>
                         <td className="py-2 pr-3">
                           <span
@@ -403,6 +423,17 @@ export default function LaporanIzinPage() {
                                     <span className="ml-1 text-xs text-slate-400">
                                       · diajukan {formatWaktuInput(i.createdAt)}
                                     </span>
+                                    {i.jenis === "SETENGAH_HARI" && (
+                                      <span className="ml-1 text-xs text-slate-400">
+                                        ·{" "}
+                                        {detailSubJenisSetengahHari(
+                                          i.subJenisSetengahHari,
+                                          i.jamMasuk,
+                                          i.jamKeluar,
+                                          i.jamPulang
+                                        )}
+                                      </span>
+                                    )}
                                   </li>
                                 ))}
                             </ul>

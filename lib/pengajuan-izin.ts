@@ -3,12 +3,15 @@ import { prisma } from "./prisma";
 import { MAKS_UKURAN_SURAT, TIPE_SURAT, simpanSurat } from "./surat-dokter";
 import { kirimNotifKeAdmin } from "./push";
 import {
+  FORMAT_JAM,
   JENIS_IZIN,
   JENIS_SATU_TANGGAL,
   LABEL_JENIS_IZIN,
   MAKS_HARI_MENIKAH,
+  SUB_JENIS_SETENGAH_HARI,
   jumlahHari,
   type JenisIzin,
+  type SubJenisSetengahHari,
 } from "./izin";
 
 // Server-only (pakai fs/prisma) — SENGAJA dipisah dari lib/izin.ts supaya
@@ -53,6 +56,11 @@ export type BuatIzinInput = {
   tanggalAkhir: string;
   alasan: string;
   fileSurat: File | null;
+  // Hanya dipakai kalau jenis = SETENGAH_HARI (Feature 32)
+  subJenisSetengahHari?: string | null;
+  jamMasuk?: string | null;
+  jamKeluar?: string | null;
+  jamPulang?: string | null;
 };
 
 export type HasilBuatIzin =
@@ -105,6 +113,49 @@ export async function buatIzin(input: BuatIzinInput): Promise<HasilBuatIzin> {
         status: 400,
         pesan: `Izin menikah maksimal ${MAKS_HARI_MENIKAH} hari`,
       };
+    }
+  }
+
+  // Detail sub-jenis Izin Setengah Hari (Feature 32) — pertahanan sisi server,
+  // sama seperti pertahanan JENIS_SATU_TANGGAL di atas.
+  let subJenisValid: SubJenisSetengahHari | null = null;
+  let jamMasukValid: string | null = null;
+  let jamKeluarValid: string | null = null;
+  let jamPulangValid: string | null = null;
+  if (jenis === "SETENGAH_HARI") {
+    const sub = input.subJenisSetengahHari;
+    if (!sub || !(SUB_JENIS_SETENGAH_HARI as readonly string[]).includes(sub)) {
+      return {
+        ok: false,
+        status: 400,
+        pesan:
+          "Pilih jenis Izin Setengah Hari: Telat, Izin di Tengah Jam Kerja, atau Pulang Cepat",
+      };
+    }
+    subJenisValid = sub as SubJenisSetengahHari;
+    if (subJenisValid === "TELAT") {
+      if (!input.jamMasuk || !FORMAT_JAM.test(input.jamMasuk)) {
+        return { ok: false, status: 400, pesan: "Jam masuk wajib diisi dengan format yang benar" };
+      }
+      jamMasukValid = input.jamMasuk;
+    } else if (subJenisValid === "PERTENGAHAN") {
+      if (!input.jamKeluar || !FORMAT_JAM.test(input.jamKeluar)) {
+        return { ok: false, status: 400, pesan: "Jam keluar wajib diisi dengan format yang benar" };
+      }
+      if (!input.jamMasuk || !FORMAT_JAM.test(input.jamMasuk)) {
+        return {
+          ok: false,
+          status: 400,
+          pesan: "Jam masuk kembali wajib diisi dengan format yang benar",
+        };
+      }
+      jamKeluarValid = input.jamKeluar;
+      jamMasukValid = input.jamMasuk;
+    } else {
+      if (!input.jamPulang || !FORMAT_JAM.test(input.jamPulang)) {
+        return { ok: false, status: 400, pesan: "Jam pulang wajib diisi dengan format yang benar" };
+      }
+      jamPulangValid = input.jamPulang;
     }
   }
 
@@ -182,6 +233,10 @@ export async function buatIzin(input: BuatIzinInput): Promise<HasilBuatIzin> {
       tanggalAkhir: new Date(tanggalAkhir),
       alasan: alasan || "",
       suratDokter: namaFile,
+      subJenisSetengahHari: subJenisValid,
+      jamMasuk: jamMasukValid,
+      jamKeluar: jamKeluarValid,
+      jamPulang: jamPulangValid,
     },
   });
 

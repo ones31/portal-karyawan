@@ -250,6 +250,21 @@ Datanya diambil dari `GET /api/admin/rekap-izin` yang sudah ada (ter-scope lokas
 Dibuat halaman baru **`/admin/izin`** (pola sama persis dengan `/admin/tukar-libur`): tabel semua pengajuan izin ter-scope lokasi, diurutkan **MENUNGGU dulu** (`orderBy: [{status:"asc"},{createdAt:"desc"}]`, memanfaatkan urutan native enum `StatusIzin` di schema), tombol **Setujui/Tolak** per baris (Tolak pakai `ModalTolakPengajuan`, Feature 27), badge jumlah "N menunggu" di judul. Endpoint baru `GET /api/admin/izin`. Kartu dashboard "Izin Menunggu" sekarang link ke halaman ini.
 **User yang memakai:** Admin, Owner
 
+#### Feature 32 — Sub-Jenis Izin Setengah Hari: Telat, Izin di Tengah Jam Kerja, Pulang Cepat ✅
+**Deskripsi:** Setelah memilih **Izin Setengah Hari** (Feature 26) di dropdown "Jenis Pengajuan", muncul pilihan sub-jenis tambahan — pola yang sama seperti pilihan tipe surat dokter di Izin Sakit. Tiga sub-jenis, tiap satu mewajibkan jam yang relevan (format `HH:mm`, `<input type="time">`):
+- **Telat** — wajib isi **Jam Masuk**
+- **Izin di Tengah Jam Kerja** — wajib isi **Jam Keluar** dan **Jam Masuk Kembali**
+- **Pulang Cepat** — wajib isi **Jam Pulang**
+
+Field baru di model `Izin`: `subJenisSetengahHari` (enum `SubJenisSetengahHari`, nullable), `jamMasuk`/`jamKeluar`/`jamPulang` (String nullable, format "HH:mm"). Semua **hanya diisi kalau `jenis` = `SETENGAH_HARI`** — jenis izin lain tetap `null`. `jamMasuk` dipakai bersama oleh Telat (jam masuk aktual) dan Izin di Tengah Jam Kerja (jam masuk kembali).
+
+Validasi wajib **dua lapis**: client (pesan ramah sebelum submit) dan server di `buatIzin()` (`lib/pengajuan-izin.ts`) — menolak **400** kalau sub-jenis tidak dipilih atau jam yang wajib kosong/format salah (regex `FORMAT_JAM` di `lib/izin.ts`). Konstanta & helper client-safe (`SUB_JENIS_SETENGAH_HARI`, `LABEL_SUB_JENIS_SETENGAH_HARI`, `detailSubJenisSetengahHari()`) di `lib/izin.ts`, dipakai bersama oleh ketiga form pengajuan (karyawan, admin "Ajukan Izin", admin "+ Ajukan Izin untuk Karyawan Ini") dan semua tempat tampil (riwayat karyawan, `/admin/izin`, Laporan Izin Rincian & Per Karyawan, export Excel kedua sheet).
+
+**Data lama tidak disentuh:** 1 pengajuan SETENGAH_HARI yang sudah ada sebelum fitur ini (disetujui, tanpa sub-jenis) sengaja **dibiarkan `null`** — tetap tampil normal di semua tempat tanpa baris detail tambahan, tidak ada migrasi data/tebakan sub-jenis mana yang dimaksud.
+
+Aturan lain untuk Izin Setengah Hari **tidak berubah**: tetap 1 tanggal (`JENIS_SATU_TANGGAL`), tetap dikecualikan penuh dari persentase kehadiran (`JENIS_TIDAK_HITUNG_KEHADIRAN`), tetap kena aturan cegah-duplikasi per tanggal (Feature 30) — duplikasi dicek per `jenis`, belum per sub-jenis (jadi tidak bisa ajukan 2x Setengah Hari di tanggal sama walau sub-jenisnya beda).
+**User yang memakai:** Karyawan, Admin, Owner
+
 #### Feature 31 — NIP (Nomor Induk Pegawai) Karyawan ✅
 **Deskripsi:** Field baru `User.nip` — nomor PIN mesin fingerprint (beda dari `nik` di `ProfilKaryawan`, itu NIK KTP). Opsional, unik antar-karyawan (ditolak 400 kalau dipakai karyawan lain). Diisi admin/owner, bukan oleh karyawan sendiri saat onboarding — sama seperti `lokasi`/`tanggalMasuk`.
 
@@ -389,6 +404,8 @@ Otomatis ikut di semua tempat yang sudah generik lewat `JENIS_IZIN`/`LABEL_JENIS
 | tanggal_mulai, tanggal_akhir | |
 | alasan | |
 | surat_dokter | file upload (PDF/JPG/PNG maks 5 MB), **opsional** (tidak ada validasi wajib berdasar jumlah hari). Hanya bisa dibuka pemilik izin dan admin/owner |
+| subJenisSetengahHari | `TELAT` / `PERTENGAHAN` / `PULANG_CEPAT`, hanya diisi kalau `jenis` = `SETENGAH_HARI` (Feature 32) |
+| jamMasuk, jamKeluar, jamPulang | String "HH:mm", hanya diisi kalau `jenis` = `SETENGAH_HARI` (Feature 32). `jamMasuk` dipakai bersama TELAT (jam masuk aktual) & PERTENGAHAN (jam masuk kembali) |
 | status | `MENUNGGU` / `DISETUJUI` / `DITOLAK` (di-approve admin/owner) |
 | feedbackAdmin | opsional, diisi admin/owner saat setujui/tolak (Feature 27) — tampil ke karyawan di riwayat & notifikasi |
 

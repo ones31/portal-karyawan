@@ -4,9 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import {
   JENIS_SATU_TANGGAL,
   LABEL_JENIS_IZIN,
+  LABEL_SUB_JENIS_SETENGAH_HARI,
   MAKS_HARI_MENIKAH,
+  SUB_JENIS_SETENGAH_HARI,
   jumlahHari,
   type JenisIzin,
+  type SubJenisSetengahHari,
 } from "@/lib/izin";
 
 type Karyawan = {
@@ -26,6 +29,13 @@ export default function AjukanIzinAdminPage() {
   const [tanggalMulai, setTanggalMulai] = useState("");
   const [tanggalAkhir, setTanggalAkhir] = useState("");
   const [alasan, setAlasan] = useState("");
+
+  // Field izin setengah hari (Feature 32)
+  const [subJenisSetengahHari, setSubJenisSetengahHari] =
+    useState<SubJenisSetengahHari>("TELAT");
+  const [jamMasuk, setJamMasuk] = useState("");
+  const [jamKeluar, setJamKeluar] = useState("");
+  const [jamPulang, setJamPulang] = useState("");
 
   const [error, setError] = useState("");
   const [pesan, setPesan] = useState("");
@@ -54,6 +64,20 @@ export default function AjukanIzinAdminPage() {
       setError("Silakan pilih file surat dokter terlebih dahulu.");
       return;
     }
+    if (jenis === "SETENGAH_HARI") {
+      if (subJenisSetengahHari === "TELAT" && !jamMasuk) {
+        setError("Jam masuk wajib diisi.");
+        return;
+      }
+      if (subJenisSetengahHari === "PERTENGAHAN" && (!jamKeluar || !jamMasuk)) {
+        setError("Jam keluar dan jam masuk kembali wajib diisi.");
+        return;
+      }
+      if (subJenisSetengahHari === "PULANG_CEPAT" && !jamPulang) {
+        setError("Jam pulang wajib diisi.");
+        return;
+      }
+    }
     const akhir = JENIS_SATU_TANGGAL.includes(jenis) ? tanggalMulai : tanggalAkhir;
     if (
       jenis === "MENIKAH" &&
@@ -73,6 +97,15 @@ export default function AjukanIzinAdminPage() {
     fd.append("alasan", alasan);
     if (jenis === "SAKIT" && tipeSakit === "DENGAN" && file) {
       fd.append("suratDokter", file);
+    }
+    if (jenis === "SETENGAH_HARI") {
+      fd.append("subJenisSetengahHari", subJenisSetengahHari);
+      if (subJenisSetengahHari === "TELAT") fd.append("jamMasuk", jamMasuk);
+      if (subJenisSetengahHari === "PERTENGAHAN") {
+        fd.append("jamKeluar", jamKeluar);
+        fd.append("jamMasuk", jamMasuk);
+      }
+      if (subJenisSetengahHari === "PULANG_CEPAT") fd.append("jamPulang", jamPulang);
     }
     const namaKaryawan = daftarKaryawan.find((k) => k.id === karyawanId)?.nama ?? "";
     const res = await fetch(`/api/admin/karyawan/${karyawanId}/izin`, {
@@ -94,6 +127,10 @@ export default function AjukanIzinAdminPage() {
     setTanggalMulai("");
     setTanggalAkhir("");
     setAlasan("");
+    setSubJenisSetengahHari("TELAT");
+    setJamMasuk("");
+    setJamKeluar("");
+    setJamPulang("");
   }
 
   return (
@@ -179,6 +216,76 @@ export default function AjukanIzinAdminPage() {
                   accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
                   onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                   className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-blue-600 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-blue-700"
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {jenis === "SETENGAH_HARI" && (
+          <div>
+            <label className="block text-sm font-medium">Jenis Izin Setengah Hari</label>
+            <div className="mt-1 space-y-2">
+              {SUB_JENIS_SETENGAH_HARI.map((v) => (
+                <label
+                  key={v}
+                  className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm has-checked:border-blue-500 has-checked:bg-blue-50"
+                >
+                  <input
+                    type="radio"
+                    name="subJenisSetengahHari"
+                    checked={subJenisSetengahHari === v}
+                    onChange={() => setSubJenisSetengahHari(v)}
+                  />
+                  {LABEL_SUB_JENIS_SETENGAH_HARI[v]}
+                </label>
+              ))}
+            </div>
+            {subJenisSetengahHari === "TELAT" && (
+              <div className="mt-2">
+                <label className="block text-sm font-medium">Jam Masuk</label>
+                <input
+                  type="time"
+                  required
+                  value={jamMasuk}
+                  onChange={(e) => setJamMasuk(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+            )}
+            {subJenisSetengahHari === "PERTENGAHAN" && (
+              <div className="mt-2 grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium">Jam Keluar</label>
+                  <input
+                    type="time"
+                    required
+                    value={jamKeluar}
+                    onChange={(e) => setJamKeluar(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium">Jam Masuk Kembali</label>
+                  <input
+                    type="time"
+                    required
+                    value={jamMasuk}
+                    onChange={(e) => setJamMasuk(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+            )}
+            {subJenisSetengahHari === "PULANG_CEPAT" && (
+              <div className="mt-2">
+                <label className="block text-sm font-medium">Jam Pulang</label>
+                <input
+                  type="time"
+                  required
+                  value={jamPulang}
+                  onChange={(e) => setJamPulang(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
                 />
               </div>
             )}

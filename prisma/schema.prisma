@@ -21,6 +21,13 @@ enum JenisIzin {
   MENIKAH
 }
 
+// Sub-jenis Izin Setengah Hari (Feature 32) — hanya diisi kalau jenis = SETENGAH_HARI
+enum SubJenisSetengahHari {
+  TELAT
+  PERTENGAHAN
+  PULANG_CEPAT
+}
+
 enum StatusIzin {
   MENUNGGU
   DISETUJUI
@@ -142,6 +149,12 @@ model Izin {
   tanggalAkhir DateTime
   alasan       String
   suratDokter  String?    // nama file surat dokter di folder uploads/surat-dokter
+  // Detail Izin Setengah Hari (Feature 32) — hanya diisi kalau jenis = SETENGAH_HARI.
+  // jamMasuk dipakai bersama oleh TELAT (jam masuk aktual) & PERTENGAHAN (jam masuk kembali).
+  subJenisSetengahHari SubJenisSetengahHari?
+  jamMasuk     String?    // format "HH:mm"
+  jamKeluar    String?    // format "HH:mm" — PERTENGAHAN (jam keluar sementara)
+  jamPulang    String?    // format "HH:mm" — PULANG_CEPAT
   status       StatusIzin @default(MENUNGGU)
   feedbackAdmin String?   // opsional, diisi admin/owner saat setujui/tolak — tampil ke karyawan
   createdAt    DateTime   @default(now())

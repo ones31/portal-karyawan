@@ -1,5 +1,10 @@
 import ExcelJS from "exceljs";
-import { LABEL_JENIS_IZIN, type JenisIzin } from "./izin";
+import {
+  LABEL_JENIS_IZIN,
+  detailSubJenisSetengahHari,
+  type JenisIzin,
+  type SubJenisSetengahHari,
+} from "./izin";
 
 // Server-only (pakai exceljs) — pembuatan file Excel rekap izin (Feature 22).
 // Konstanta murni yang ikut dipakai komponen client ada di lib/izin.ts.
@@ -13,6 +18,10 @@ export type BarisIzinExport = {
   alasan: string;
   status: string;
   suratDokter: string | null;
+  subJenisSetengahHari: SubJenisSetengahHari | null;
+  jamMasuk: string | null;
+  jamKeluar: string | null;
+  jamPulang: string | null;
   createdAt: Date;
 };
 
@@ -141,6 +150,15 @@ export async function buatExcelRekapIzin(
   });
 
   baris.forEach((b, idx) => {
+    const detailSetengahHari =
+      b.jenis === "SETENGAH_HARI"
+        ? detailSubJenisSetengahHari(
+            b.subJenisSetengahHari,
+            b.jamMasuk,
+            b.jamKeluar,
+            b.jamPulang
+          )
+        : null;
     const r = ws.addRow([
       idx + 1,
       b.nama,
@@ -149,7 +167,7 @@ export async function buatExcelRekapIzin(
       tanggalPanjang(b.tanggalMulai),
       tanggalPanjang(b.tanggalAkhir),
       jumlahHariIzin(b.tanggalMulai, b.tanggalAkhir),
-      b.alasan || "—",
+      detailSetengahHari ? `${b.alasan || "—"} (${detailSetengahHari})` : b.alasan || "—",
       b.status,
       b.suratDokter ? "Ada" : "Tidak ada",
       tanggalPanjang(b.createdAt),
@@ -218,7 +236,16 @@ export async function buatExcelRekapIzin(
       jumlah: number;
       totalHari: number;
       // Tiap izin disimpan mentah dulu supaya bisa diurutkan kronologis
-      tanggal: { jenis: JenisIzin; mulai: Date; akhir: Date; createdAt: Date }[];
+      tanggal: {
+        jenis: JenisIzin;
+        mulai: Date;
+        akhir: Date;
+        createdAt: Date;
+        subJenisSetengahHari: SubJenisSetengahHari | null;
+        jamMasuk: string | null;
+        jamKeluar: string | null;
+        jamPulang: string | null;
+      }[];
     }
   >();
   for (const b of baris) {
@@ -234,6 +261,10 @@ export async function buatExcelRekapIzin(
       mulai: b.tanggalMulai,
       akhir: b.tanggalAkhir,
       createdAt: b.createdAt,
+      subJenisSetengahHari: b.subJenisSetengahHari,
+      jamMasuk: b.jamMasuk,
+      jamKeluar: b.jamKeluar,
+      jamPulang: b.jamPulang,
     });
   }
 
@@ -243,10 +274,18 @@ export async function buatExcelRekapIzin(
       const daftarTanggal = k.tanggal
         .slice()
         .sort((a, b) => a.mulai.getTime() - b.mulai.getTime())
-        .map(
-          (t) =>
-            `${LABEL_JENIS_IZIN[t.jenis]} — ${rentangIzin(t.mulai, t.akhir)} (diajukan ${waktuInputRingkas(t.createdAt)})`
-        )
+        .map((t) => {
+          const detail =
+            t.jenis === "SETENGAH_HARI"
+              ? detailSubJenisSetengahHari(
+                  t.subJenisSetengahHari,
+                  t.jamMasuk,
+                  t.jamKeluar,
+                  t.jamPulang
+                )
+              : null;
+          return `${LABEL_JENIS_IZIN[t.jenis]} — ${rentangIzin(t.mulai, t.akhir)} (diajukan ${waktuInputRingkas(t.createdAt)})${detail ? ` — ${detail}` : ""}`;
+        })
         .join("\n");
       const r = ws2.addRow([
         idx + 1,

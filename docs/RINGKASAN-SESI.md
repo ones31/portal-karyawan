@@ -1,8 +1,8 @@
 # Ringkasan Sesi — Portal Toko Marmo
 
-**Versi: v17** — diperbarui 2026-08-15
+**Versi: v18** — diperbarui 2026-08-16
 
-> Ditulis untuk melanjutkan pekerjaan di sesi Claude Code baru. Baca ini + `docs/PRD.md` (kebenaran tunggal fitur, sekarang sampai **Feature 31**) + `AGENTS.md` (manual operasi & aturan kerja, sekarang 18 kesalahan umum) sebelum lanjut.
+> Ditulis untuk melanjutkan pekerjaan di sesi Claude Code baru. Baca ini + `docs/PRD.md` (kebenaran tunggal fitur, sekarang sampai **Feature 32**) + `AGENTS.md` (manual operasi & aturan kerja, sekarang 18 kesalahan umum) sebelum lanjut.
 
 ## Status saat ini
 
@@ -13,6 +13,25 @@
 ⚠️ **Insiden non-kode saat deploy ini**: token Vercel statis di `~/.vercel-token` mendadak kena `Not authorized... must re-authenticate to this scope` untuk tim **marmotoko** (`saml: true` di respons API — kemungkinan tim baru mengaktifkan SSO/SAML, token API lama jadi tidak cukup). **Bukan bug kode.** Solusi: `vercel login` interaktif (device auth flow, user login manual lewat browser) — begitu berhasil, `vercel deploy` langsung normal lagi tanpa perlu `--token` eksplisit (pakai sesi CLI yang baru). Kalau kejadian lagi di sesi depan, ulangi pola ini: `vercel login` → tunggu user konfirmasi sudah login di browser → `vercel whoami`/`vercel teams ls` untuk verifikasi → lanjut `vercel deploy --prod --yes` tanpa `--token`.
 
 Catatan: schema `Catatan` ter-migrate ke Neon yang **dipakai bersama dev & produksi**, jadi perubahan schema lokal langsung berlaku di produksi.
+
+## Feature 32 — Sub-jenis Izin Setengah Hari (Telat / Izin di Tengah Jam Kerja / Pulang Cepat) — sesi 16 Agu 2026
+
+Kelanjutan dari Feature 26 (Izin Setengah Hari). User minta dipecah jadi 3 sub-jenis, masing-masing mewajibkan jam berbeda:
+- **Telat** → Jam Masuk
+- **Izin di Tengah Jam Kerja** → Jam Keluar + Jam Masuk Kembali
+- **Pulang Cepat** → Jam Pulang
+
+**Keputusan desain (dikonfirmasi user lewat pertanyaan sebelum implementasi):** bukan jenis izin baru yang berdiri sendiri — setelah karyawan pilih "Izin Setengah Hari" di dropdown, muncul pilihan sub-jenis di dalamnya (pola sama seperti pilihan tipe surat dokter di Izin Sakit). Label final: "Telat" / "Izin di Tengah Jam Kerja" / "Pulang Cepat" — user sempat pilih "Izin Pertengahan" lalu koreksi ke "Izin di Tengah Jam Kerja".
+
+**Schema:** enum baru `SubJenisSetengahHari` (TELAT/PERTENGAHAN/PULANG_CEPAT) + 4 kolom nullable baru di `Izin` (`subJenisSetengahHari`, `jamMasuk`, `jamKeluar`, `jamPulang` — format "HH:mm"). Migrasi `20260816094623_sub_jenis_izin_setengah_hari` diterapkan ke Neon (shared dev+prod). **1 data lama** (izin Setengah Hari milik Ilham Kar., disetujui, sebelum fitur ini ada) sengaja **dibiarkan apa adanya** (`subJenisSetengahHari: null`) — tidak ditebak/dimigrasi, tetap tampil normal tanpa baris detail tambahan di semua tempat (diverifikasi langsung, tidak error).
+
+**File yang disentuh** (checklist skill `tambah-fitur-portal`, jenis izin baru + field tambahan): `lib/izin.ts` (konstanta + helper `detailSubJenisSetengahHari()`), `lib/pengajuan-izin.ts` (`buatIzin()` — validasi 2 lapis, server pakai regex `FORMAT_JAM`), 2 API route (`/api/izin`, `/api/admin/karyawan/[id]/izin`), 3 form pengajuan yang terduplikasi di codebase ini (`/karyawan/izin`, `/admin/ajukan-izin`, `/admin/karyawan/[id]` bagian "+ Ajukan Izin"), dan 5 tempat tampil (`/admin/izin`, `/admin/karyawan/[id]` riwayat, `/admin/laporan-izin` kedua tab, `lib/export-izin.ts` kedua sheet Excel, `/api/admin/rekap-izin` yang me-whitelist field manual).
+
+**Diuji:** `npx tsc --noEmit` bersih. Karyawan uji dibuat (`Uji SetengahHari`), diuji lewat curl — 3 sub-jenis submit sukses (201) dengan jam yang benar, 4 kasus negatif ditolak 400 (jam kosong per sub-jenis, format jam salah "25:99", sub-jenis tidak dipilih). UI diverifikasi lewat browser: dropdown radio + input jam muncul benar di form admin, detail line tampil benar di `/admin/izin`, Laporan Izin (Rincian & Per Karyawan), dan file Excel export (kedua sheet, dicek langsung isi selnya). Data uji (karyawan + 3 izin, cascade delete) dibersihkan sesudahnya.
+
+**Catatan operasional:** ada 2 sesi Claude Code jalan bersamaan di folder ini — dev server sesi lain (PID 254) di-restart karena migrasi schema perlu Prisma Client baru (AGENTS.md kesalahan #3); sudah dinyalakan ulang dengan `npm run dev` seperti biasa.
+
+**Belum di-deploy ke Vercel** — perlu `vercel deploy --prod` kalau user minta.
 
 ## Susulan Feature 31 — NIP Tegal Alur + perubahan roster (data-only, tidak perlu deploy kode)
 
@@ -202,6 +221,7 @@ Setiap kali file ini diperbarui: naikkan **Versi** di judul +1, lalu tambah satu
 
 | Versi | Tanggal | Ringkasan perubahan |
 |---|---|---|
+| v18 | 2026-08-16 | **Feature 32** (sub-jenis Izin Setengah Hari: Telat/Izin di Tengah Jam Kerja/Pulang Cepat, masing-masing dengan field jam wajib berbeda). Migrasi schema diterapkan ke Neon, data lama dibiarkan (`null`). Belum di-deploy ke Vercel. |
 | v17 | 2026-08-15 | Susulan Feature 31 (data-only, tanpa deploy kode): 19 NIP Tegal Alur terisi, Salma dihapus, Nisa & Yasmin dibuat baru. |
 | v16 | 2026-08-15 | Feature 31 **di-deploy ke produksi** (commit `a3d5c3b`, READY, diverifikasi langsung di www.marmo.my.id — NIP tampil benar). Insiden: token Vercel statis basi (tim aktifkan SSO), diperbaiki via `vercel login` interaktif — dicatat di "Alat & kredensial" untuk sesi depan. |
 | v15 | 2026-08-15 | **Feature 31** (field `User.nip` + kolom/form di Daftar & Edit Karyawan; impor 23/24 NIP dari data user, "Suryana" tidak ditemukan). Migrasi & data sudah di Neon (shared dev+prod), tapi kode UI/API belum di-deploy. |
